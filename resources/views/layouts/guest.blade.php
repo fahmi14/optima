@@ -66,8 +66,11 @@
             <div class="w-11 h-11 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-sm mb-3">
                 <i data-lucide="layers" class="w-5 h-5"></i>
             </div>
-            <h1 class="text-xl font-bold text-slate-800 tracking-tight">OPTIMA</h1>
-            <p class="text-[11px] text-slate-400 font-medium tracking-wider uppercase mt-0.5">Sistem Penugasan BPS</p>
+            <h1 class="text-xl font-bold text-slate-800 tracking-tight">OPTIMA 3307</h1>
+            <p class="text-[11px] text-slate-500 font-medium tracking-wide mt-0.5 max-w-xs leading-relaxed">
+                Sistem Manajemen Penugasan Teknis &amp; Administrasi<br>
+                <span class="font-semibold text-slate-700">BPS Kabupaten Wonosobo</span>
+            </p>
         </div>
 
         <!-- Auth Card -->

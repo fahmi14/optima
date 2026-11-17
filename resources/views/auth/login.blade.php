@@ -83,10 +83,53 @@
             <span>Masuk</span>
         </button>
     </form>
+
+    @if(app()->environment('local'))
+        <div class="pt-4 border-t border-slate-100 space-y-2.5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-slate-700">Login Cepat (Mode Demo)</span>
+                <span class="text-[10px] text-slate-400">1-Klik Masuk</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="quickLogin('admin', 'admin')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Admin (IPDS)</span>
+                    <span class="text-[10px] text-slate-400">admin / admin</span>
+                </button>
+                <button type="button" onclick="quickLogin('pimpinan@bps.go.id', 'password')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Pimpinan</span>
+                    <span class="text-[10px] text-slate-400">Kepala BPS</span>
+                </button>
+                <button type="button" onclick="quickLogin('katim.sosial@bps.go.id', 'password')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Ketua Tim</span>
+                    <span class="text-[10px] text-slate-400">Tim Sosial</span>
+                </button>
+                <button type="button" onclick="quickLogin('keuangan@bps.go.id', 'password')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Keuangan</span>
+                    <span class="text-[10px] text-slate-400">Subbag Umum</span>
+                </button>
+                <button type="button" onclick="quickLogin('organik1@bps.go.id', 'password')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Pegawai Organik</span>
+                    <span class="text-[10px] text-slate-400">organik1</span>
+                </button>
+                <button type="button" onclick="quickLogin('mitra1@bps.go.id', 'password')" class="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-left transition cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-800">Mitra Statistik</span>
+                    <span class="text-[10px] text-slate-400">mitra1</span>
+                </button>
+            </div>
+        </div>
+    @endif
 @endsection
 
 @push('scripts')
 <script>
+    function quickLogin(email, password) {
+        const emailInput = document.getElementById('email');
+        const passInput = document.getElementById('password');
+        emailInput.value = email;
+        passInput.value = password;
+        emailInput.closest('form').submit();
+    }
+
     function togglePassword(inputId, btn) {
         const input = document.getElementById(inputId);
         const isPassword = input.type === 'password';

@@ -2,232 +2,250 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kegiatan;
-use App\Models\Tim;
+use App\Models\Kecamatan;
+use App\Models\MasterKegiatan;
+use App\Models\PeriodeKegiatan;
+use App\Models\SubKegiatan;
+use App\Models\TimKerja;
+use App\Models\User;
+use App\Services\ExcelImportExportService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class KegiatanController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Kegiatan::with('tim');
+    public function __construct(
+        private readonly ExcelImportExportService $excelService
+    ) {}
 
-        if ($request->filled('id_tim')) {
-            $query->where('id_tim', $request->id_tim);
+    public function index(Request $request): View
+    {
+        $query = MasterKegiatan::with([
+            'timKerja',
+            'periodes' => function ($q) use ($request) {
+                if ($request->filled('periode')) {
+                    $q->where('nama_periode', $request->periode);
+                }
+                if ($request->filled('bulan')) {
+                    $parts = explode('-', $request->bulan);
+                    if (count($parts) === 2) {
+                        $q->where(function ($sub) use ($parts) {
+                            $sub->whereYear('tgl_mulai', (int) $parts[0])
+                                ->whereMonth('tgl_mulai', (int) $parts[1]);
+                        })->orWhere(function ($sub) use ($parts) {
+                            $sub->whereYear('tgl_selesai', (int) $parts[0])
+                                ->whereMonth('tgl_selesai', (int) $parts[1]);
+                        });
+                    }
+                }
+                $q->orderBy('tgl_mulai');
+            },
+            'periodes.subKegiatans.penugasans',
+            'periodes.alokasiTransports',
+        ]);
+
+        if ($request->filled('tim_kerja_id')) {
+            $query->where('tim_kerja_id', $request->tim_kerja_id);
+        }
+
+        if ($request->filled('tahun')) {
+            $query->where('tahun', $request->tahun);
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhereHas('tim', function($tq) use ($search) {
-                      $tq->where('nama', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('periodes', fn ($pq) => $pq->where('nama_periode', 'like', "%{$search}%"));
             });
         }
 
-        $kegiatans = $query->latest()->paginate(10);
-        $tims = Tim::all();
-        return view('kegiatan.index', compact('kegiatans', 'tims'));
-    }
-
-    public function create()
-    {
-        $tims = Tim::all();
-        return view('kegiatan.create', compact('tims'));
-    }
-
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'tgl_mulai' => 'nullable|date',
-            'tgl_selesai' => 'nullable|date|after_or_equal:tgl_mulai',
-            'id_tim' => 'nullable|exists:tims,id',
-            'honor' => 'nullable|numeric',
-            'jenis_honor' => 'nullable|string|max:100',
-            'sbml' => 'nullable|numeric',
-            'jml_petugas' => 'nullable|integer',
-            'beban' => 'nullable|integer',
-            'custom_keys' => 'nullable|array',
-            'custom_values' => 'nullable|array',
-        ]);
-
-        $administrasi = [
-            'honor' => $request->honor,
-            'jenis_honor' => $request->jenis_honor,
-            'sbml' => $request->sbml,
-            'jml_petugas' => $request->jml_petugas,
-            'beban' => $request->beban,
-        ];
-
-        // Custom field administrasi
-        if ($request->has('custom_keys') && is_array($request->custom_keys)) {
-            foreach ($request->custom_keys as $index => $key) {
-                if (!empty($key)) {
-                    $administrasi[$key] = $request->custom_values[$index] ?? null;
+        if ($request->filled('periode') || $request->filled('bulan')) {
+            $query->whereHas('periodes', function ($q) use ($request) {
+                if ($request->filled('periode')) {
+                    $q->where('nama_periode', $request->periode);
                 }
-            }
-        }
-
-        Kegiatan::create([
-            'nama' => $validated['nama'],
-            'tgl_mulai' => $validated['tgl_mulai'],
-            'tgl_selesai' => $validated['tgl_selesai'],
-            'id_tim' => $validated['id_tim'],
-            'administrasi' => $administrasi,
-        ]);
-
-        return redirect()->route('kegiatan.index')->with('success', 'Data Kegiatan berhasil ditambahkan.');
-    }
-
-    public function edit(Kegiatan $kegiatan)
-    {
-        $tims = Tim::all();
-        return view('kegiatan.edit', compact('kegiatan', 'tims'));
-    }
-
-    public function update(Request $request, Kegiatan $kegiatan)
-    {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'tgl_mulai' => 'nullable|date',
-            'tgl_selesai' => 'nullable|date|after_or_equal:tgl_mulai',
-            'id_tim' => 'nullable|exists:tims,id',
-            'honor' => 'nullable|numeric',
-            'jenis_honor' => 'nullable|string|max:100',
-            'sbml' => 'nullable|numeric',
-            'jml_petugas' => 'nullable|integer',
-            'beban' => 'nullable|integer',
-            'custom_keys' => 'nullable|array',
-            'custom_values' => 'nullable|array',
-        ]);
-
-        $administrasi = [
-            'honor' => $request->honor,
-            'jenis_honor' => $request->jenis_honor,
-            'sbml' => $request->sbml,
-            'jml_petugas' => $request->jml_petugas,
-            'beban' => $request->beban,
-        ];
-
-        if ($request->has('custom_keys') && is_array($request->custom_keys)) {
-            foreach ($request->custom_keys as $index => $key) {
-                if (!empty($key)) {
-                    $administrasi[$key] = $request->custom_values[$index] ?? null;
+                if ($request->filled('bulan')) {
+                    $parts = explode('-', $request->bulan);
+                    if (count($parts) === 2) {
+                        $q->where(function ($sub) use ($parts) {
+                            $sub->whereYear('tgl_mulai', (int) $parts[0])
+                                ->whereMonth('tgl_mulai', (int) $parts[1]);
+                        })->orWhere(function ($sub) use ($parts) {
+                            $sub->whereYear('tgl_selesai', (int) $parts[0])
+                                ->whereMonth('tgl_selesai', (int) $parts[1]);
+                        });
+                    }
                 }
-            }
+            });
         }
 
-        $kegiatan->update([
-            'nama' => $validated['nama'],
-            'tgl_mulai' => $validated['tgl_mulai'],
-            'tgl_selesai' => $validated['tgl_selesai'],
-            'id_tim' => $validated['id_tim'],
-            'administrasi' => $administrasi,
+        $kegiatans = $query->orderByDesc('tahun')->orderBy('nama')->get();
+        $timKerjas = TimKerja::orderBy('nama')->get();
+        $tahunList = MasterKegiatan::select('tahun')->distinct()->orderByDesc('tahun')->pluck('tahun');
+        $periodeList = PeriodeKegiatan::select('nama_periode')->distinct()->orderBy('nama_periode')->pluck('nama_periode');
+
+        return view('kegiatan.index', compact('kegiatans', 'timKerjas', 'tahunList', 'periodeList'));
+    }
+
+    public function storeMaster(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'tim_kerja_id' => ['required', 'exists:tim_kerjas,id'],
+            'nama' => ['required', 'string', 'max:255'],
+            'tahun' => ['required', 'integer', 'min:2020', 'max:2099'],
+            'deskripsi' => ['nullable', 'string'],
         ]);
 
-        return redirect()->route('kegiatan.index')->with('success', 'Data Kegiatan berhasil diperbarui.');
+        MasterKegiatan::create($data);
+
+        return back()->with('success', 'Master Kegiatan berhasil dibuat.');
     }
 
-    public function destroy(Kegiatan $kegiatan)
+    public function destroyMaster(MasterKegiatan $master): RedirectResponse
     {
-        $kegiatan->delete();
-        return redirect()->route('kegiatan.index')->with('success', 'Data Kegiatan berhasil dihapus.');
+        $master->delete();
+
+        return back()->with('success', 'Master Kegiatan berhasil dihapus.');
     }
 
-    public function export()
+    public function storePeriode(Request $request, MasterKegiatan $master): RedirectResponse
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Kegiatan');
-
-        $headers = [
-            'ID', 'Nama Kegiatan', 'Tgl Mulai', 'Tgl Selesai', 'ID Tim', 'Nama Tim',
-            'Honor', 'Jenis Honor', 'SBML', 'Jml Petugas', 'Beban', 'Administrasi (JSON)'
-        ];
-
-        $col = 'A';
-        foreach ($headers as $header) {
-            $sheet->setCellValue($col . '1', $header);
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-            $col++;
-        }
-
-        $row = 2;
-        $kegiatans = Kegiatan::with('tim')->get();
-        foreach ($kegiatans as $k) {
-            $adm = $k->administrasi ?? [];
-            $sheet->setCellValue('A' . $row, $k->id);
-            $sheet->setCellValue('B' . $row, $k->nama);
-            $sheet->setCellValue('C' . $row, $k->tgl_mulai ? $k->tgl_mulai->format('Y-m-d') : '');
-            $sheet->setCellValue('D' . $row, $k->tgl_selesai ? $k->tgl_selesai->format('Y-m-d') : '');
-            $sheet->setCellValue('E' . $row, $k->id_tim);
-            $sheet->setCellValue('F' . $row, $k->tim?->nama);
-            $sheet->setCellValue('G' . $row, $adm['honor'] ?? '');
-            $sheet->setCellValue('H' . $row, $adm['jenis_honor'] ?? '');
-            $sheet->setCellValue('I' . $row, $adm['sbml'] ?? '');
-            $sheet->setCellValue('J' . $row, $adm['jml_petugas'] ?? '');
-            $sheet->setCellValue('K' . $row, $adm['beban'] ?? '');
-            $sheet->setCellValue('L' . $row, json_encode($adm, JSON_UNESCAPED_UNICODE));
-            $row++;
-        }
-
-        $writer = new Xlsx($spreadsheet);
-        $fileName = 'kegiatan_export_' . date('Ymd_His') . '.xlsx';
-
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $fileName, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        $data = $request->validate([
+            'nama_periode' => ['required', 'string', 'max:255'],
+            'tgl_mulai' => ['required', 'date'],
+            'tgl_selesai' => ['required', 'date', 'after_or_equal:tgl_mulai'],
+            'pagu_transport' => ['required', 'numeric', 'min:0'],
         ]);
+
+        $master->periodes()->create($data);
+
+        return back()->with('success', 'Periode Kegiatan berhasil ditambahkan.');
     }
 
-    public function import(Request $request)
+    public function destroyPeriode(PeriodeKegiatan $periode): RedirectResponse
+    {
+        $periode->delete();
+
+        return redirect()->route('kegiatan.index')->with('success', 'Periode Kegiatan berhasil dihapus.');
+    }
+
+    public function showPeriode(PeriodeKegiatan $periode): View
+    {
+        $periode->load([
+            'masterKegiatan.timKerja',
+            'masterKegiatan.periodes',
+            'subKegiatans.penugasans.user',
+            'subKegiatans.penugasans.kecamatan',
+            'subKegiatans.penugasans.alokasiTransports',
+        ]);
+
+        $otherPeriodes = PeriodeKegiatan::with('masterKegiatan')
+            ->where('id', '!=', $periode->id)
+            ->whereHas('subKegiatans')
+            ->get();
+
+        $petugasList = User::with('timKerja')
+            ->whereIn('role', ['organik', 'mitra', 'katim'])
+            ->orderBy('name')
+            ->get();
+
+        $kecamatans = Kecamatan::orderBy('nama')->get();
+
+        $terpakaiTransport = $periode->totalTerpakaiTransport();
+        $sisaPagu = $periode->sisaPaguTransport();
+
+        return view('kegiatan.periode', compact(
+            'periode',
+            'otherPeriodes',
+            'petugasList',
+            'kecamatans',
+            'terpakaiTransport',
+            'sisaPagu'
+        ));
+    }
+
+    public function storeSubKegiatan(Request $request, PeriodeKegiatan $periode): RedirectResponse
+    {
+        $data = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+            'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
+            'deadline_tahapan' => ['nullable', 'date'],
+        ]);
+
+        $data['urutan'] = $periode->subKegiatans()->count() + 1;
+        $periode->subKegiatans()->create($data);
+
+        return back()->with('success', 'Sub-Kegiatan / Tahapan berhasil ditambahkan.');
+    }
+
+    public function updateSubKegiatan(Request $request, SubKegiatan $sub): RedirectResponse
+    {
+        $data = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+            'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
+            'deadline_tahapan' => ['nullable', 'date'],
+        ]);
+
+        $sub->update($data);
+
+        return back()->with('success', 'Tahapan berhasil diperbarui.');
+    }
+
+    public function destroySubKegiatan(SubKegiatan $sub): RedirectResponse
+    {
+        $sub->delete();
+
+        return back()->with('success', 'Tahapan berhasil dihapus.');
+    }
+
+    public function cloneSubKegiatan(Request $request, PeriodeKegiatan $periode): RedirectResponse
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'source_periode_id' => ['required', 'exists:periode_kegiatans,id', 'different:' . $periode->id],
         ]);
 
-        $file = $request->file('file');
-        $spreadsheet = IOFactory::load($file->getRealPath());
-        $sheet = $spreadsheet->getActiveSheet();
-        $rows = $sheet->toArray();
-
-        $count = 0;
-        for ($i = 1; $i < count($rows); $i++) {
-            $r = $rows[$i];
-            if (empty($r[1])) continue;
-
-            $administrasi = [];
-            if (!empty($r[11])) {
-                $decoded = json_decode($r[11], true);
-                if (is_array($decoded)) {
-                    $administrasi = $decoded;
-                }
-            } else {
-                $administrasi = [
-                    'honor' => !empty($r[6]) ? (float)$r[6] : null,
-                    'jenis_honor' => $r[7] ?? null,
-                    'sbml' => !empty($r[8]) ? (float)$r[8] : null,
-                    'jml_petugas' => !empty($r[9]) ? (int)$r[9] : null,
-                    'beban' => !empty($r[10]) ? (int)$r[10] : null,
-                ];
-            }
-
-            Kegiatan::create([
-                'nama' => $r[1],
-                'tgl_mulai' => !empty($r[2]) ? date('Y-m-d', strtotime($r[2])) : null,
-                'tgl_selesai' => !empty($r[3]) ? date('Y-m-d', strtotime($r[3])) : null,
-                'id_tim' => !empty($r[4]) ? (int)$r[4] : null,
-                'administrasi' => $administrasi,
-            ]);
-            $count++;
+        $source = PeriodeKegiatan::with('subKegiatans')->findOrFail($request->source_periode_id);
+        if ($source->subKegiatans->isEmpty()) {
+            return back()->with('error', 'Periode sumber belum memiliki tahapan.');
         }
 
-        return redirect()->route('kegiatan.index')->with('success', "Berhasil mengimpor {$count} data kegiatan dari Excel.");
+        $urutan = $periode->subKegiatans()->count();
+        $cloned = 0;
+
+        foreach ($source->subKegiatans as $sub) {
+            $urutan++;
+            $periode->subKegiatans()->create([
+                'nama' => $sub->nama,
+                'jenis_tahapan' => $sub->jenis_tahapan,
+                'deadline_tahapan' => $periode->tgl_selesai,
+                'urutan' => $urutan,
+            ]);
+            $cloned++;
+        }
+
+        return back()->with('success', "{$cloned} tahapan berhasil disalin dari {$source->nama_periode}.");
+    }
+
+    public function downloadTemplate(): StreamedResponse
+    {
+        return $this->excelService->downloadTemplateKegiatan();
+    }
+
+    public function import(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,csv,xls', 'max:5120'],
+        ]);
+
+        $report = $this->excelService->importKegiatan($request->file('file'));
+
+        return back()->with('import_report', [
+            'title' => 'Laporan Import Kegiatan & Tahapan',
+            'success_count' => $report['success_count'],
+            'errors' => $report['errors'],
+        ]);
     }
 }

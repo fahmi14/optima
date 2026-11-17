@@ -1,15 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\WilayahController;
-use App\Http\Controllers\TimController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\KalenderController;
+use App\Http\Controllers\KecamatanController;
 use App\Http\Controllers\KegiatanController;
-use App\Http\Controllers\MatrikTugasController;
+use App\Http\Controllers\PenugasanController;
+use App\Http\Controllers\TimKerjaController;
+use App\Http\Controllers\TransportController;
+use App\Http\Controllers\TugasSayaController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
 // Guest / Authentication Routes
 Route::middleware('guest')->group(function () {
@@ -27,40 +30,73 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+    // Dashboard Utama / Eksekutif
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Wilayah
-    Route::prefix('wilayah')->name('wilayah.')->group(function () {
-        Route::get('/export', [WilayahController::class, 'export'])->name('export');
-        Route::post('/import', [WilayahController::class, 'import'])->name('import');
-    });
-    Route::resource('wilayah', WilayahController::class);
+    // Kalender Pekerjaan
+    Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender.index');
 
-    // Tim
-    Route::prefix('tim')->name('tim.')->group(function () {
-        Route::get('/export', [TimController::class, 'export'])->name('export');
-        Route::post('/import', [TimController::class, 'import'])->name('import');
-    });
-    Route::resource('tim', TimController::class);
+    // Tugas Saya (Pegawai Organik & Mitra Statistik, juga tersedia untuk semua user)
+    Route::get('/tugas-saya', [TugasSayaController::class, 'index'])->name('tugas-saya.index');
+    Route::post('/tugas-saya/{penugasan}/progress', [TugasSayaController::class, 'updateProgress'])->name('tugas-saya.progress');
 
-    // Pengguna (User, Organik, Mitra)
-    Route::prefix('user')->name('user.')->group(function () {
-        Route::get('/export', [UserController::class, 'export'])->name('export');
-        Route::post('/import', [UserController::class, 'import'])->name('import');
-    });
-    Route::resource('user', UserController::class);
+    // Master Data (Khusus Admin IPDS)
+    Route::middleware('role:admin')->group(function () {
+        // Master Pengguna (Organik & Mitra)
+        Route::get('/user', [UserController::class, 'index'])->name('user.index');
+        Route::post('/user', [UserController::class, 'store'])->name('user.store');
+        Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
+        Route::delete('/user/{user}', [UserController::class, 'destroy'])->name('user.destroy');
+        Route::get('/user/template/organik', [UserController::class, 'downloadTemplateOrganik'])->name('user.template.organik');
+        Route::get('/user/template/mitra', [UserController::class, 'downloadTemplateMitra'])->name('user.template.mitra');
+        Route::post('/user/import/organik', [UserController::class, 'importOrganik'])->name('user.import.organik');
+        Route::post('/user/import/mitra', [UserController::class, 'importMitra'])->name('user.import.mitra');
 
-    // Kegiatan
-    Route::prefix('kegiatan')->name('kegiatan.')->group(function () {
-        Route::get('/export', [KegiatanController::class, 'export'])->name('export');
-        Route::post('/import', [KegiatanController::class, 'import'])->name('import');
-    });
-    Route::resource('kegiatan', KegiatanController::class);
+        // Master Tim Kerja
+        Route::get('/master/tim', [TimKerjaController::class, 'index'])->name('tim.index');
+        Route::post('/master/tim', [TimKerjaController::class, 'store'])->name('tim.store');
+        Route::put('/master/tim/{tim}', [TimKerjaController::class, 'update'])->name('tim.update');
+        Route::delete('/master/tim/{tim}', [TimKerjaController::class, 'destroy'])->name('tim.destroy');
 
-    // Matrik Tugas
-    Route::prefix('matrik')->name('matrik.')->group(function () {
-        Route::get('/export', [MatrikTugasController::class, 'export'])->name('export');
-        Route::post('/import', [MatrikTugasController::class, 'import'])->name('import');
+        // Master Kecamatan
+        Route::get('/master/kecamatan', [KecamatanController::class, 'index'])->name('kecamatan.index');
+        Route::post('/master/kecamatan', [KecamatanController::class, 'store'])->name('kecamatan.store');
+        Route::put('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'update'])->name('kecamatan.update');
+        Route::delete('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'destroy'])->name('kecamatan.destroy');
     });
-    Route::resource('matrik', MatrikTugasController::class);
+
+    // Kegiatan & Penugasan (Admin & Ketua Tim)
+    Route::middleware('role:admin,katim')->group(function () {
+        Route::get('/kegiatan', [KegiatanController::class, 'index'])->name('kegiatan.index');
+        Route::post('/kegiatan/master', [KegiatanController::class, 'storeMaster'])->name('kegiatan.master.store');
+        Route::delete('/kegiatan/master/{master}', [KegiatanController::class, 'destroyMaster'])->name('kegiatan.master.destroy');
+        Route::get('/kegiatan/template', [KegiatanController::class, 'downloadTemplate'])->name('kegiatan.template');
+        Route::post('/kegiatan/import', [KegiatanController::class, 'import'])->name('kegiatan.import');
+
+        Route::post('/kegiatan/{master}/periode', [KegiatanController::class, 'storePeriode'])->name('kegiatan.periode.store');
+        Route::get('/periode/{periode}', [KegiatanController::class, 'showPeriode'])->name('kegiatan.periode.show');
+        Route::delete('/periode/{periode}', [KegiatanController::class, 'destroyPeriode'])->name('kegiatan.periode.destroy');
+
+        Route::post('/periode/{periode}/sub', [KegiatanController::class, 'storeSubKegiatan'])->name('kegiatan.sub.store');
+        Route::put('/sub/{sub}', [KegiatanController::class, 'updateSubKegiatan'])->name('kegiatan.sub.update');
+        Route::delete('/sub/{sub}', [KegiatanController::class, 'destroySubKegiatan'])->name('kegiatan.sub.destroy');
+        Route::post('/periode/{periode}/clone-sub', [KegiatanController::class, 'cloneSubKegiatan'])->name('kegiatan.sub.clone');
+
+        // Distribusi Penugasan & Import Massal
+        Route::post('/sub/{sub}/penugasan', [PenugasanController::class, 'store'])->name('penugasan.store');
+        Route::post('/penugasan/{penugasan}/verify', [PenugasanController::class, 'verify'])->name('penugasan.verify');
+        Route::delete('/penugasan/{penugasan}', [PenugasanController::class, 'destroy'])->name('penugasan.destroy');
+        Route::get('/penugasan/template', [PenugasanController::class, 'downloadTemplate'])->name('penugasan.template');
+        Route::post('/periode/{periode}/penugasan/import', [PenugasanController::class, 'import'])->name('penugasan.import');
+    });
+
+    // Rekap Transportasi Lokal & SPJ (Admin, Katim, Keuangan)
+    Route::middleware('role:admin,katim,keuangan')->group(function () {
+        Route::get('/transport', [TransportController::class, 'index'])->name('transport.index');
+        Route::get('/transport/export', [TransportController::class, 'export'])->name('transport.export');
+    });
+
+    Route::middleware('role:admin,keuangan')->group(function () {
+        Route::post('/transport/{alokasi}/status', [TransportController::class, 'updateStatus'])->name('transport.status');
+    });
 });
