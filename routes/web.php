@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\KecamatanController;
 use App\Http\Controllers\KegiatanController;
+use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\PenugasanController;
 use App\Http\Controllers\TimKerjaController;
 use App\Http\Controllers\TransportController;
@@ -69,6 +70,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/master/kecamatan', [KecamatanController::class, 'store'])->name('kecamatan.store');
         Route::put('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'update'])->name('kecamatan.update');
         Route::delete('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'destroy'])->name('kecamatan.destroy');
+
+        // Pengaturan SBML & Jam Kerja
+        Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
+        Route::put('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
     });
 
     // Kegiatan & Penugasan (Admin & Ketua Tim)

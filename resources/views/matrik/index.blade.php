@@ -8,7 +8,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
             <h1 class="text-xl font-bold text-slate-800 tracking-tight">Matrik Penugasan Petugas</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Pemetaan petugas, peran survei (PCL, PML, dll - JSON), alokasi SLS/wilayah, dan beban kerja.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Pemetaan petugas, peran survei (PCL, PML, dll - JSON), alokasi SLS/wilayah, pengawas, dan beban kerja.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <button type="button" onclick="document.getElementById('modal-import-matrik').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition shadow-xs">
@@ -21,7 +21,7 @@
             </a>
             <a href="{{ route('matrik.create') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition shadow-xs">
                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                <span>Alokasi Tugas</span>
+                <span>Buat Alokasi Matrik</span>
             </a>
         </div>
     </div>
@@ -31,7 +31,7 @@
         <form method="GET" action="{{ route('matrik.index') }}" class="flex flex-wrap items-center gap-2 w-full">
             <div class="relative flex-1 min-w-[180px]">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kegiatan, petugas, wilayah..." class="w-full text-xs pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kegiatan, petugas, pengawas, wilayah..." class="w-full text-xs pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400">
             </div>
 
             <select name="id_kegiatan" onchange="this.form.submit()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none">
@@ -65,6 +65,7 @@
                     <tr>
                         <th class="py-3 px-4">Kegiatan</th>
                         <th class="py-3 px-4">Petugas</th>
+                        <th class="py-3 px-4">Pengawas (PML)</th>
                         <th class="py-3 px-4">Role Penugasan (JSON)</th>
                         <th class="py-3 px-4">Wilayah Tugas</th>
                         <th class="py-3 px-4 text-center">Tanggal</th>
@@ -91,6 +92,14 @@
                                         &bull; HP: {{ $m->user->mitra->no_hp }}
                                     @endif
                                 </div>
+                            </td>
+                            <td class="py-3 px-4">
+                                @if($m->pengawas)
+                                    <span class="font-semibold text-slate-800 block text-xs">{{ $m->pengawas->name }}</span>
+                                    <span class="text-[10px] text-slate-400 capitalize">Pengawas ({{ $m->pengawas->tipe }})</span>
+                                @else
+                                    <span class="text-slate-400 italic text-[11px]">Tanpa Pengawas</span>
+                                @endif
                             </td>
                             <td class="py-3 px-4">
                                 <div class="flex flex-wrap gap-1">
@@ -134,7 +143,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-slate-400 italic">Belum ada alokasi matrik tugas.</td>
+                            <td colspan="8" class="py-8 text-center text-slate-400 italic">Belum ada alokasi matrik tugas.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -165,7 +174,7 @@
                 <input type="file" name="file" required class="block w-full text-xs text-slate-500 border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none">
             </div>
             <p class="text-[11px] text-slate-400 leading-relaxed">
-                Format kolom: A=ID, B=id_kegiatan, C=nama kegiatan, D=id_user, E=nama petugas, F=tipe, G=role, H=id_wilayah, I=nama wilayah, J=tgl, K=beban.
+                Format kolom: A=ID, B=id_kegiatan, C=nama kegiatan, D=id_user, E=nama petugas, F=tipe, G=id_pengawas, H=nama pengawas, I=role, J=id_wilayah, K=nama wilayah, L=tgl, M=beban.
             </p>
             <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onclick="document.getElementById('modal-import-matrik').classList.add('hidden')" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg">Batal</button>

@@ -29,7 +29,14 @@ class TugasSayaController extends Controller
             $query->where('status', $request->status);
         }
 
-        $penugasans = $query->orderByRaw("FIELD(status, 'Revisi', 'Berjalan', 'Belum Mulai', 'Menunggu Verifikasi', 'Selesai')")
+        $penugasans = $query->orderByRaw("CASE status 
+                WHEN 'Revisi' THEN 1 
+                WHEN 'Berjalan' THEN 2 
+                WHEN 'Belum Mulai' THEN 3 
+                WHEN 'Menunggu Verifikasi' THEN 4 
+                WHEN 'Selesai' THEN 5 
+                ELSE 6 
+            END")
             ->orderBy('deadline_tugas')
             ->get();
 

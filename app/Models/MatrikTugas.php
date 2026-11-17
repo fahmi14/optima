@@ -14,6 +14,7 @@ class MatrikTugas extends Model
     protected $fillable = [
         'id_kegiatan',
         'id_user',
+        'id_pengawas',
         'role',
         'id_wilayah',
         'tgl',
@@ -34,6 +35,11 @@ class MatrikTugas extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user');
+    }
+
+    public function pengawas()
+    {
+        return $this->belongsTo(User::class, 'id_pengawas');
     }
 
     public function wilayah()

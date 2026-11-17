@@ -17,6 +17,8 @@ class SubKegiatan extends Model
         'jenis_tahapan',
         'deadline_tahapan',
         'urutan',
+        'estimasi_jam_per_satuan',
+        'honor_per_satuan',
     ];
 
     protected function casts(): array
@@ -24,6 +26,8 @@ class SubKegiatan extends Model
         return [
             'deadline_tahapan' => 'date',
             'urutan' => 'integer',
+            'estimasi_jam_per_satuan' => 'decimal:2',
+            'honor_per_satuan' => 'decimal:2',
         ];
     }
 

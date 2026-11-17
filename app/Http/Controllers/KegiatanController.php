@@ -173,9 +173,14 @@ class KegiatanController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
             'deadline_tahapan' => ['nullable', 'date'],
+            'estimasi_jam_per_satuan' => ['nullable', 'numeric', 'min:0.1'],
+            'honor_per_satuan' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $data['urutan'] = $periode->subKegiatans()->count() + 1;
+        $data['estimasi_jam_per_satuan'] = $data['estimasi_jam_per_satuan'] ?? 1.0;
+        $data['honor_per_satuan'] = $data['honor_per_satuan'] ?? 0;
+
         $periode->subKegiatans()->create($data);
 
         return back()->with('success', 'Sub-Kegiatan / Tahapan berhasil ditambahkan.');
@@ -187,6 +192,8 @@ class KegiatanController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
             'deadline_tahapan' => ['nullable', 'date'],
+            'estimasi_jam_per_satuan' => ['nullable', 'numeric', 'min:0.1'],
+            'honor_per_satuan' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $sub->update($data);

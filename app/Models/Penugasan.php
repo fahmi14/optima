@@ -20,6 +20,9 @@ class Penugasan extends Model
         'realisasi_volume',
         'progres_persen',
         'bobot_poin',
+        'estimasi_jam_total',
+        'honor_satuan',
+        'honor_total',
         'deadline_tugas',
         'status',
         'catatan',
@@ -35,6 +38,9 @@ class Penugasan extends Model
             'realisasi_volume' => 'integer',
             'progres_persen' => 'integer',
             'bobot_poin' => 'integer',
+            'estimasi_jam_total' => 'decimal:2',
+            'honor_satuan' => 'decimal:2',
+            'honor_total' => 'decimal:2',
             'deadline_tugas' => 'date',
             'verified_at' => 'datetime',
         ];
@@ -65,18 +71,24 @@ class Penugasan extends Model
         return $this->hasMany(AlokasiTransport::class, 'penugasan_id');
     }
 
+    public function durasiJam(): float
+    {
+        if ($this->estimasi_jam_total !== null && (float) $this->estimasi_jam_total > 0) {
+            return (float) $this->estimasi_jam_total;
+        }
+
+        $jamPerSatuan = (float) ($this->subKegiatan?->estimasi_jam_per_satuan ?: 1);
+        return round($jamPerSatuan * (int) $this->target_volume, 2);
+    }
+
     public function bebanPoin(): int
     {
-        return (int) $this->bobot_poin * (int) $this->target_volume;
+        return (int) round($this->durasiJam());
     }
 
     public function bobotLabel(): string
     {
-        return match ((int) $this->bobot_poin) {
-            1 => 'Ringan (1)',
-            3 => 'Sedang (3)',
-            5 => 'Berat (5)',
-            default => "Bobot ({$this->bobot_poin})",
-        };
+        $jam = $this->durasiJam();
+        return "{$jam} Jam";
     }
 }

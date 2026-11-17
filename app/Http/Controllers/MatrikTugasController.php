@@ -15,7 +15,7 @@ class MatrikTugasController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MatrikTugas::with(['kegiatan', 'user.organik', 'user.mitra', 'wilayah']);
+        $query = MatrikTugas::with(['kegiatan', 'user.organik', 'user.mitra', 'pengawas', 'wilayah']);
 
         if ($request->filled('id_kegiatan')) {
             $query->where('id_kegiatan', $request->id_kegiatan);
@@ -36,6 +36,8 @@ class MatrikTugasController extends Controller
                     $kq->where('nama', 'like', "%{$search}%");
                 })->orWhereHas('user', function($uq) use ($search) {
                     $uq->where('name', 'like', "%{$search}%");
+                })->orWhereHas('pengawas', function($pq) use ($search) {
+                    $pq->where('name', 'like', "%{$search}%");
                 })->orWhereHas('wilayah', function($wq) use ($search) {
                     $wq->where('nama', 'like', "%{$search}%");
                 });
@@ -53,45 +55,52 @@ class MatrikTugasController extends Controller
     public function create()
     {
         $kegiatans = Kegiatan::all();
-        $users = User::all();
-        $wilayahs = Wilayah::all();
+        $users = User::with(['organik', 'mitra'])->orderBy('name')->get();
+        $wilayahs = Wilayah::orderBy('nama')->get();
         return view('matrik.create', compact('kegiatans', 'users', 'wilayahs'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        // Mendukung pembuatan alokasi multi-petugas dan multi-wilayah sesuai alur step 1-7
+        $request->validate([
             'id_kegiatan' => 'required|exists:kegiatans,id',
-            'id_user' => 'required|exists:users,id',
-            'role' => 'nullable|array',
-            'custom_role' => 'nullable|string',
-            'id_wilayah' => 'nullable|exists:wilayahs,id',
-            'tgl' => 'nullable|date',
-            'beban' => 'required|integer|min:0',
+            'allocations' => 'required|array|min:1',
+            'allocations.*.id_user' => 'required|exists:users,id',
+            'allocations.*.id_wilayah' => 'required|exists:wilayahs,id',
+            'allocations.*.beban' => 'required|integer|min:0',
+            'allocations.*.id_pengawas' => 'nullable|exists:users,id',
+            'allocations.*.role' => 'nullable|string',
+            'allocations.*.tgl' => 'nullable|date',
         ]);
 
-        $roles = $request->role ?? [];
-        if (!empty($request->custom_role)) {
-            $roles[] = trim($request->custom_role);
+        $createdCount = 0;
+        $tglGlobal = $request->input('tgl_global');
+
+        foreach ($request->allocations as $alloc) {
+            $role = !empty($alloc['role']) ? [trim($alloc['role'])] : ['PCL (Pencacah Lapangan)'];
+            $idPengawas = !empty($alloc['id_pengawas']) ? $alloc['id_pengawas'] : null;
+
+            MatrikTugas::create([
+                'id_kegiatan' => $request->id_kegiatan,
+                'id_user' => $alloc['id_user'],
+                'id_pengawas' => $idPengawas,
+                'role' => $role,
+                'id_wilayah' => $alloc['id_wilayah'],
+                'tgl' => $alloc['tgl'] ?? $tglGlobal ?? null,
+                'beban' => $alloc['beban'] ?? 0,
+            ]);
+            $createdCount++;
         }
 
-        MatrikTugas::create([
-            'id_kegiatan' => $validated['id_kegiatan'],
-            'id_user' => $validated['id_user'],
-            'role' => array_values(array_unique($roles)),
-            'id_wilayah' => $validated['id_wilayah'],
-            'tgl' => $validated['tgl'],
-            'beban' => $validated['beban'],
-        ]);
-
-        return redirect()->route('matrik.index')->with('success', 'Data Matrik Tugas berhasil ditambahkan.');
+        return redirect()->route('matrik.index')->with('success', "Berhasil menambahkan {$createdCount} alokasi matrik penugasan.");
     }
 
     public function edit(MatrikTugas $matrik)
     {
         $kegiatans = Kegiatan::all();
-        $users = User::all();
-        $wilayahs = Wilayah::all();
+        $users = User::with(['organik', 'mitra'])->orderBy('name')->get();
+        $wilayahs = Wilayah::orderBy('nama')->get();
         return view('matrik.edit', compact('matrik', 'kegiatans', 'users', 'wilayahs'));
     }
 
@@ -100,6 +109,7 @@ class MatrikTugasController extends Controller
         $validated = $request->validate([
             'id_kegiatan' => 'required|exists:kegiatans,id',
             'id_user' => 'required|exists:users,id',
+            'id_pengawas' => 'nullable|exists:users,id',
             'role' => 'nullable|array',
             'custom_role' => 'nullable|string',
             'id_wilayah' => 'nullable|exists:wilayahs,id',
@@ -115,6 +125,7 @@ class MatrikTugasController extends Controller
         $matrik->update([
             'id_kegiatan' => $validated['id_kegiatan'],
             'id_user' => $validated['id_user'],
+            'id_pengawas' => $validated['id_pengawas'] ?? null,
             'role' => array_values(array_unique($roles)),
             'id_wilayah' => $validated['id_wilayah'],
             'tgl' => $validated['tgl'],
@@ -138,6 +149,7 @@ class MatrikTugasController extends Controller
 
         $headers = [
             'ID', 'ID Kegiatan', 'Nama Kegiatan', 'ID User', 'Nama Petugas', 'Tipe Petugas',
+            'ID Pengawas', 'Nama Pengawas',
             'Role (JSON)', 'ID Wilayah', 'Nama Wilayah', 'Tanggal', 'Beban'
         ];
 
@@ -149,7 +161,7 @@ class MatrikTugasController extends Controller
         }
 
         $row = 2;
-        $matriks = MatrikTugas::with(['kegiatan', 'user', 'wilayah'])->get();
+        $matriks = MatrikTugas::with(['kegiatan', 'user', 'pengawas', 'wilayah'])->get();
         foreach ($matriks as $m) {
             $sheet->setCellValue('A' . $row, $m->id);
             $sheet->setCellValue('B' . $row, $m->id_kegiatan);
@@ -157,11 +169,13 @@ class MatrikTugasController extends Controller
             $sheet->setCellValue('D' . $row, $m->id_user);
             $sheet->setCellValue('E' . $row, $m->user?->name);
             $sheet->setCellValue('F' . $row, ucfirst($m->user?->tipe ?? ''));
-            $sheet->setCellValue('G' . $row, json_encode($m->role ?? [], JSON_UNESCAPED_UNICODE));
-            $sheet->setCellValue('H' . $row, $m->id_wilayah);
-            $sheet->setCellValue('I' . $row, $m->wilayah?->nama);
-            $sheet->setCellValue('J' . $row, $m->tgl ? $m->tgl->format('Y-m-d') : '');
-            $sheet->setCellValue('K' . $row, $m->beban);
+            $sheet->setCellValue('G' . $row, $m->id_pengawas ?? '');
+            $sheet->setCellValue('H' . $row, $m->pengawas?->name ?? '-');
+            $sheet->setCellValue('I' . $row, json_encode($m->role ?? [], JSON_UNESCAPED_UNICODE));
+            $sheet->setCellValue('J' . $row, $m->id_wilayah);
+            $sheet->setCellValue('K' . $row, $m->wilayah?->nama);
+            $sheet->setCellValue('L' . $row, $m->tgl ? $m->tgl->format('Y-m-d') : '');
+            $sheet->setCellValue('M' . $row, $m->beban);
             $row++;
         }
 
@@ -192,22 +206,30 @@ class MatrikTugasController extends Controller
             if (empty($r[1]) || empty($r[3])) continue;
 
             $roles = [];
-            if (!empty($r[6])) {
-                $decoded = json_decode($r[6], true);
+            // Cek letak kolom role (kolom I index 8 atau kolom G index 6)
+            $roleRaw = !empty($r[8]) ? $r[8] : (!empty($r[6]) ? $r[6] : '');
+            if (!empty($roleRaw)) {
+                $decoded = json_decode($roleRaw, true);
                 if (is_array($decoded)) {
                     $roles = $decoded;
                 } else {
-                    $roles = array_map('trim', explode(',', (string)$r[6]));
+                    $roles = array_map('trim', explode(',', (string)$roleRaw));
                 }
             }
+
+            $idPengawas = !empty($r[6]) && is_numeric($r[6]) ? (int)$r[6] : null;
+            $idWilayah = !empty($r[9]) ? (int)$r[9] : (!empty($r[7]) ? (int)$r[7] : null);
+            $tgl = !empty($r[11]) ? date('Y-m-d', strtotime($r[11])) : (!empty($r[9]) ? date('Y-m-d', strtotime($r[9])) : null);
+            $beban = !empty($r[12]) ? (int)$r[12] : (!empty($r[10]) ? (int)$r[10] : 0);
 
             MatrikTugas::create([
                 'id_kegiatan' => (int)$r[1],
                 'id_user' => (int)$r[3],
+                'id_pengawas' => $idPengawas,
                 'role' => $roles,
-                'id_wilayah' => !empty($r[7]) ? (int)$r[7] : null,
-                'tgl' => !empty($r[9]) ? date('Y-m-d', strtotime($r[9])) : null,
-                'beban' => !empty($r[10]) ? (int)$r[10] : 0,
+                'id_wilayah' => $idWilayah,
+                'tgl' => $tgl,
+                'beban' => $beban,
             ]);
             $count++;
         }

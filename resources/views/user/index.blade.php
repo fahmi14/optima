@@ -111,38 +111,43 @@
     </div>
 
     <!-- Modal Tambah Pengguna -->
-    <div x-show="openAdd" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-        <div @click.away="openAdd = false" class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-bold text-slate-800">Tambah Pegawai / Mitra</h3>
-                <button @click="openAdd = false" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    <div x-show="openAdd" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 sm:p-6 transition-all">
+        <div @click.away="openAdd = false" class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100">
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                    <span class="inline-block px-3 py-1 text-[10px] font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">Pengguna Baru</span>
+                    <h3 class="text-lg font-bold text-slate-800 tracking-tight mt-1">Tambah Pegawai / Mitra</h3>
+                </div>
+                <button @click="openAdd = false" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
-            <form method="POST" action="{{ route('user.store') }}" class="space-y-3 text-xs">
+            <form method="POST" action="{{ route('user.store') }}" class="space-y-4 text-xs">
                 @csrf
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Nama Lengkap</label>
-                        <input type="text" name="name" required class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
+                        <input type="text" name="name" required placeholder="Nama Lengkap" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Username (opsional)</label>
-                        <input type="text" name="username" class="w-full border border-slate-200 rounded-xl px-3 py-2">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Email</label>
-                        <input type="email" name="email" required class="w-full border border-slate-200 rounded-xl px-3 py-2">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Password</label>
-                        <input type="password" name="password" required value="bps3307" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Username (opsional)</label>
+                        <input type="text" name="username" placeholder="username" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Role</label>
-                        <select name="role" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Email</label>
+                        <input type="email" name="email" required placeholder="email@bps.go.id" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Password</label>
+                        <input type="password" name="password" required value="bps3307" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Role Akses</label>
+                        <select name="role" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="organik">Pegawai Organik</option>
                             <option value="mitra">Mitra Statistik</option>
                             <option value="katim">Ketua Tim</option>
@@ -152,31 +157,31 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Tipe Petugas</label>
-                        <select name="tipe" x-model="formTipe" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Tipe Petugas</label>
+                        <select name="tipe" x-model="formTipe" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="organik">Organik</option>
                             <option value="mitra">Mitra</option>
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div x-show="formTipe === 'organik'">
-                        <label class="block font-semibold mb-1">NIP</label>
-                        <input type="text" name="nip" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">NIP</label>
+                        <input type="text" name="nip" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div x-show="formTipe === 'mitra'">
-                        <label class="block font-semibold mb-1">ID SOBAT</label>
-                        <input type="text" name="id_sobat" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">ID SOBAT</label>
+                        <input type="text" name="id_sobat" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Kapasitas Maks (Poin)</label>
-                        <input type="number" name="kapasitas_maks" value="100" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Kapasitas Maks (Jam)</label>
+                        <input type="number" name="kapasitas_maks" value="160" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Tim Kerja</label>
-                        <select name="tim_kerja_id" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Tim Kerja</label>
+                        <select name="tim_kerja_id" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="">- Pilih Tim -</option>
                             @foreach($timKerjas as $tim)
                                 <option value="{{ $tim->id }}">{{ $tim->nama }}</option>
@@ -184,8 +189,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Kecamatan Domisili</label>
-                        <select name="kecamatan_id" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Kecamatan Domisili</label>
+                        <select name="kecamatan_id" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="">- Pilih Kecamatan -</option>
                             @foreach($kecamatans as $kec)
                                 <option value="{{ $kec->id }}">{{ $kec->nama }}</option>
@@ -193,47 +198,52 @@
                         </select>
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 pt-3">
-                    <button type="button" @click="openAdd = false" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600">Batal</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold">Simpan</button>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <button type="button" @click="openAdd = false" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer font-semibold">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition shadow-2xs cursor-pointer">Simpan Pengguna</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Modal Edit Pengguna -->
-    <div x-show="editUser" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-        <div @click.away="editUser = null" class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" x-if="editUser">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-bold text-slate-800">Edit Pengguna</h3>
-                <button @click="editUser = null" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    <div x-show="editUser" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 sm:p-6 transition-all">
+        <div @click.away="editUser = null" class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100" x-if="editUser">
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                    <span class="inline-block px-3 py-1 text-[10px] font-bold rounded-lg bg-sky-50 text-sky-700 border border-sky-100">Perbarui</span>
+                    <h3 class="text-lg font-bold text-slate-800 tracking-tight mt-1">Edit Pengguna</h3>
+                </div>
+                <button @click="editUser = null" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
-            <form method="POST" :action="'/user/' + editUser.id" class="space-y-3 text-xs">
+            <form method="POST" :action="'/user/' + editUser.id" class="space-y-4 text-xs">
                 @csrf @method('PUT')
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Nama Lengkap</label>
-                        <input type="text" name="name" x-model="editUser.name" required class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
+                        <input type="text" name="name" x-model="editUser.name" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Username</label>
-                        <input type="text" name="username" x-model="editUser.username" class="w-full border border-slate-200 rounded-xl px-3 py-2">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1">Email</label>
-                        <input type="email" name="email" x-model="editUser.email" required class="w-full border border-slate-200 rounded-xl px-3 py-2">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Password Baru (opsional)</label>
-                        <input type="password" name="password" placeholder="Kosongkan jika tetap" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Username</label>
+                        <input type="text" name="username" x-model="editUser.username" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Role</label>
-                        <select name="role" x-model="editUser.role" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Email</label>
+                        <input type="email" name="email" x-model="editUser.email" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Password Baru (opsional)</label>
+                        <input type="password" name="password" placeholder="Kosongkan jika tetap" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Role Akses</label>
+                        <select name="role" x-model="editUser.role" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="organik">Pegawai Organik</option>
                             <option value="mitra">Mitra Statistik</option>
                             <option value="katim">Ketua Tim</option>
@@ -243,31 +253,31 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Tipe</label>
-                        <select name="tipe" x-model="editUser.tipe" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Tipe Petugas</label>
+                        <select name="tipe" x-model="editUser.tipe" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="organik">Organik</option>
                             <option value="mitra">Mitra</option>
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">NIP</label>
-                        <input type="text" name="nip" x-model="editUser.nip" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">NIP</label>
+                        <input type="text" name="nip" x-model="editUser.nip" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">ID SOBAT</label>
-                        <input type="text" name="id_sobat" x-model="editUser.id_sobat" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">ID SOBAT</label>
+                        <input type="text" name="id_sobat" x-model="editUser.id_sobat" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Kapasitas Maks</label>
-                        <input type="number" name="kapasitas_maks" x-model="editUser.kapasitas_maks" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Kapasitas Maks</label>
+                        <input type="number" name="kapasitas_maks" x-model="editUser.kapasitas_maks" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-semibold mb-1">Tim Kerja</label>
-                        <select name="tim_kerja_id" x-model="editUser.tim_kerja_id" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Tim Kerja</label>
+                        <select name="tim_kerja_id" x-model="editUser.tim_kerja_id" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="">- Pilih Tim -</option>
                             @foreach($timKerjas as $tim)
                                 <option value="{{ $tim->id }}">{{ $tim->nama }}</option>
@@ -275,8 +285,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block font-semibold mb-1">Kecamatan</label>
-                        <select name="kecamatan_id" x-model="editUser.kecamatan_id" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Kecamatan Domisili</label>
+                        <select name="kecamatan_id" x-model="editUser.kecamatan_id" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
                             <option value="">- Pilih Kecamatan -</option>
                             @foreach($kecamatans as $kec)
                                 <option value="{{ $kec->id }}">{{ $kec->nama }}</option>
@@ -284,9 +294,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 pt-3">
-                    <button type="button" @click="editUser = null" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600">Batal</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold">Simpan Perubahan</button>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <button type="button" @click="editUser = null" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer font-semibold">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition shadow-2xs cursor-pointer">Simpan Perubahan</button>
                 </div>
             </form>
         </div>

@@ -4,10 +4,10 @@
 
 @section('content')
 <div class="max-w-2xl mx-auto space-y-4">
-    <div class="flex items-center justify-between pb-2">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-200/80">
         <div>
             <h1 class="text-xl font-bold text-slate-800 tracking-tight">Edit Matrik Tugas #{{ $matrik->id }}</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Perbarui penugasan survei dan beban target.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Perbarui penugasan survei, pengawas, dan beban target.</p>
         </div>
         <a href="{{ route('matrik.index') }}" class="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition">
             &larr; Kembali
@@ -46,6 +46,19 @@
                         @endforeach
                     </select>
                 </div>
+            </div>
+
+            <!-- Pengawas Lapangan -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Pengawas Lapangan (PML) - Opsional:</label>
+                <select name="id_pengawas" class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none">
+                    <option value="">-- Tanpa Pengawas / Mandiri --</option>
+                    @foreach($users as $u)
+                        <option value="{{ $u->id }}" {{ old('id_pengawas', $matrik->id_pengawas) == $u->id ? 'selected' : '' }}>
+                            {{ $u->name }} ({{ ucfirst($u->tipe) }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             <!-- Role (JSON) -->

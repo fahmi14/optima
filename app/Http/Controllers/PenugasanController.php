@@ -27,12 +27,20 @@ class PenugasanController extends Controller
             'kecamatan_id' => ['nullable', 'exists:kecamatans,id'],
             'target_volume' => ['required', 'integer', 'min:1'],
             'satuan_volume' => ['required', 'string', 'max:50'],
-            'bobot_poin' => ['required', 'in:1,3,5'],
+            'bobot_poin' => ['nullable', 'integer'],
+            'estimasi_jam_satuan' => ['nullable', 'numeric', 'min:0.1'],
+            'honor_satuan' => ['nullable', 'numeric', 'min:0'],
             'deadline_tugas' => ['nullable', 'date'],
             'dapat_transport' => ['nullable', 'boolean'],
             'tgl_tugas_transport' => ['nullable', 'string'],
             'nominal_transport' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $jamPerSatuan = (float) ($request->estimasi_jam_satuan ?: ($sub->estimasi_jam_per_satuan ?: 1));
+        $honorSatuan = (float) ($request->honor_satuan ?: ($sub->honor_per_satuan ?: 0));
+        $targetVol = (int) $data['target_volume'];
+        $estimasiJamTotal = round($jamPerSatuan * $targetVol, 2);
+        $honorTotal = round($honorSatuan * $targetVol, 2);
 
         $needTransport = $request->boolean('dapat_transport');
         $dates = [];
@@ -45,14 +53,17 @@ class PenugasanController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($sub, $data, $needTransport, $dates, $request) {
+            DB::transaction(function () use ($sub, $data, $needTransport, $dates, $request, $estimasiJamTotal, $honorSatuan, $honorTotal) {
                 $penugasan = Penugasan::create([
                     'sub_kegiatan_id' => $sub->id,
                     'user_id' => $data['user_id'],
                     'kecamatan_id' => $data['kecamatan_id'] ?? null,
                     'target_volume' => $data['target_volume'],
                     'satuan_volume' => $data['satuan_volume'],
-                    'bobot_poin' => $data['bobot_poin'],
+                    'bobot_poin' => (int) round($estimasiJamTotal),
+                    'estimasi_jam_total' => $estimasiJamTotal,
+                    'honor_satuan' => $honorSatuan,
+                    'honor_total' => $honorTotal,
                     'deadline_tugas' => $data['deadline_tugas'] ?? $sub->deadline_tahapan,
                     'status' => 'Belum Mulai',
                 ]);
@@ -67,7 +78,7 @@ class PenugasanController extends Controller
                 }
             });
 
-            return back()->with('success', 'Penugasan berhasil didistribusikan.');
+            return back()->with('success', "Penugasan berhasil didistribusikan ({$estimasiJamTotal} jam kerja).");
         } catch (InvalidArgumentException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
