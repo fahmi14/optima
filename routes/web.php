@@ -8,6 +8,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\KecamatanController;
 use App\Http\Controllers\KegiatanController;
+use App\Http\Controllers\MitraController;
+use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\PenugasanController;
 use App\Http\Controllers\TimKerjaController;
@@ -49,15 +51,24 @@ Route::middleware('auth')->group(function () {
 
     // Master Data (Khusus Admin IPDS)
     Route::middleware('role:admin')->group(function () {
-        // Master Pengguna (Organik & Mitra)
-        Route::get('/user', [UserController::class, 'index'])->name('user.index');
-        Route::post('/user', [UserController::class, 'store'])->name('user.store');
-        Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
-        Route::delete('/user/{user}', [UserController::class, 'destroy'])->name('user.destroy');
-        Route::get('/user/template/organik', [UserController::class, 'downloadTemplateOrganik'])->name('user.template.organik');
-        Route::get('/user/template/mitra', [UserController::class, 'downloadTemplateMitra'])->name('user.template.mitra');
-        Route::post('/user/import/organik', [UserController::class, 'importOrganik'])->name('user.import.organik');
-        Route::post('/user/import/mitra', [UserController::class, 'importMitra'])->name('user.import.mitra');
+        // Redirect /user lama ke /pegawai
+        Route::redirect('/user', '/pegawai');
+
+        // Master Data Pegawai Organik
+        Route::get('/pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
+        Route::post('/pegawai', [PegawaiController::class, 'store'])->name('pegawai.store');
+        Route::put('/pegawai/{pegawai}', [PegawaiController::class, 'update'])->name('pegawai.update');
+        Route::delete('/pegawai/{pegawai}', [PegawaiController::class, 'destroy'])->name('pegawai.destroy');
+        Route::get('/pegawai/template', [PegawaiController::class, 'downloadTemplate'])->name('pegawai.template');
+        Route::post('/pegawai/import', [PegawaiController::class, 'import'])->name('pegawai.import');
+
+        // Master Data Mitra Statistik (KEPKA Tahunan)
+        Route::get('/mitra', [MitraController::class, 'index'])->name('mitra.index');
+        Route::post('/mitra', [MitraController::class, 'store'])->name('mitra.store');
+        Route::put('/mitra/{mitra}', [MitraController::class, 'update'])->name('mitra.update');
+        Route::delete('/mitra/{mitra}', [MitraController::class, 'destroy'])->name('mitra.destroy');
+        Route::get('/mitra/template', [MitraController::class, 'downloadTemplate'])->name('mitra.template');
+        Route::post('/mitra/import', [MitraController::class, 'import'])->name('mitra.import');
 
         // Master Tim Kerja
         Route::get('/master/tim', [TimKerjaController::class, 'index'])->name('tim.index');

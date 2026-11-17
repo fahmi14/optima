@@ -125,9 +125,13 @@
             <div>
                 <p class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Master Data &amp; Konfigurasi</p>
                 <div class="space-y-1">
-                    <a href="{{ route('user.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('user.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
-                        <i data-lucide="users" class="w-4 h-4 {{ request()->routeIs('user.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                        <span>Pegawai &amp; Mitra</span>
+                    <a href="{{ route('pegawai.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('pegawai.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="user-check" class="w-4 h-4 {{ request()->routeIs('pegawai.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>Data Pegawai</span>
+                    </a>
+                    <a href="{{ route('mitra.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('mitra.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="users" class="w-4 h-4 {{ request()->routeIs('mitra.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>Data Mitra KEPKA</span>
                     </a>
                     <a href="{{ route('tim.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('tim.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
                         <i data-lucide="briefcase" class="w-4 h-4 {{ request()->routeIs('tim.*') ? 'text-white' : 'text-slate-400' }}"></i>

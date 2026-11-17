@@ -22,7 +22,9 @@ class User extends Authenticatable
         'nip',
         'id_sobat',
         'jabatan',
+        'pangkat_golongan',
         'no_hp',
+        'alamat',
         'kapasitas_maks',
         'tim_kerja_id',
         'kecamatan_id',
@@ -60,6 +62,11 @@ class User extends Authenticatable
     public function alokasiTransports(): HasMany
     {
         return $this->hasMany(AlokasiTransport::class, 'user_id');
+    }
+
+    public function mitraKepkas(): HasMany
+    {
+        return $this->hasMany(MitraKepka::class, 'user_id');
     }
 
     public function roleLabel(): string

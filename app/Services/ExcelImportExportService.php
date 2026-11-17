@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Kecamatan;
 use App\Models\MasterKegiatan;
+use App\Models\MitraKepka;
 use App\Models\Penugasan;
 use App\Models\PeriodeKegiatan;
 use App\Models\SubKegiatan;
@@ -33,12 +34,12 @@ class ExcelImportExportService
     public function downloadTemplateOrganik(): StreamedResponse
     {
         $headers = [
-            'nip', 'nama_lengkap', 'email', 'jabatan',
-            'nama_tim_kerja', 'kapasitas_maks_poin', 'password_default',
+            'nip', 'nama_lengkap', 'email', 'jabatan', 'pangkat_golongan',
+            'no_hp', 'alamat', 'nama_tim_kerja', 'kapasitas_maks_poin', 'password_default',
         ];
         $samples = [
-            ['199001012015011001', 'Andi Pratama, S.ST', 'andi.pratama@bps.go.id', 'Statistisi Ahli Pertama', 'Tim Statistik Sosial', 100, 'bps3307'],
-            ['199205122018022002', 'Siti Nurhaliza, S.Tr.Stat', 'siti.nur@bps.go.id', 'Pranata Komputer Ahli Pertama', 'Tim IPDS', 100, 'bps3307'],
+            ['199001012015011001', 'Andi Pratama, S.ST', 'andi.pratama@bps.go.id', 'Statistisi Ahli Pertama', 'Penata Muda Tk. I / III/b', '081234567890', 'Jl. Jend. Sudirman No. 12, Wonosobo', 'Tim Statistik Sosial', 100, 'bps3307'],
+            ['199205122018022002', 'Siti Nurhaliza, S.Tr.Stat', 'siti.nur@bps.go.id', 'Pranata Komputer Ahli Pertama', 'Penata Muda / III/a', '085612345678', 'Perum Purnamandala, Kertek', 'Tim IPDS', 100, 'bps3307'],
         ];
 
         return $this->streamExcel('template_pegawai_organik.xlsx', 'Template Organik', $headers, $samples);
@@ -47,15 +48,22 @@ class ExcelImportExportService
     public function downloadTemplateMitra(): StreamedResponse
     {
         $headers = [
-            'id_sobat', 'nama_mitra', 'email_atau_username',
-            'no_hp', 'kecamatan_domisili', 'kapasitas_maks_poin',
+            'Nama Lengkap', 'Alamat Detail', 'Alamat Provinsi', 'Alamat Kab/Kota',
+            'Alamat Kecamatan', 'Alamat Desa/Kel', 'Tempat, Tanggal Lahir', 'Umur',
+            'Jenis Kelamin', 'Status Kawin', 'Pendidikan', 'Pekerjaan',
+            'Deskripsi Pekerjaan Lain', 'Terikat Kontrak KLDI Lain', 'Nama KLDI',
+            'Keterangan KLDI', 'No Telp', 'SOBAT ID', 'Email',
         ];
         $samples = [
-            ['33072026001', 'Ahmad Kurniawan', 'ahmad.kurniawan@gmail.com', '081234567891', 'Wonosobo', 100],
-            ['33072026002', 'Dewi Lestari', 'dewi.sobat3307', '085612345678', 'Kertek', 100],
+            [
+                'Ratna Susanti', 'Gosono 02/07', '(33) JAWA TENGAH', '(07) WONOSOBO',
+                '(080) KERTEK', '(007) KARANGLUHUR', 'WONOSOBO, 04 Mei 2001', 25,
+                'Pr', '(1) Belum Kawin', 'Tamat SMA/Sederajat', 'Wiraswasta',
+                '', 'Tidak', '', '', '+62 838-4381-3542', '330723110171', 'ratnarizqyana24@gmail.com',
+            ],
         ];
 
-        return $this->streamExcel('template_mitra_statistik.xlsx', 'Template Mitra', $headers, $samples);
+        return $this->streamExcel('template_mitra_kepka.xlsx', 'Template Mitra KEPKA', $headers, $samples);
     }
 
     public function downloadTemplateKegiatan(): StreamedResponse
@@ -102,6 +110,9 @@ class ExcelImportExportService
             $nama = trim((string) ($row['nama_lengkap'] ?? ''));
             $email = trim((string) ($row['email'] ?? ''));
             $jabatan = trim((string) ($row['jabatan'] ?? ''));
+            $pangkat = trim((string) ($row['pangkat_golongan'] ?? ''));
+            $noHp = trim((string) ($row['no_hp'] ?? ''));
+            $alamat = trim((string) ($row['alamat'] ?? ''));
             $namaTim = trim((string) ($row['nama_tim_kerja'] ?? ''));
             $kapasitas = (int) ($row['kapasitas_maks_poin'] ?? 100);
             $password = trim((string) ($row['password_default'] ?? 'bps3307'));
@@ -133,6 +144,9 @@ class ExcelImportExportService
                         'tipe' => 'organik',
                         'nip' => $nip,
                         'jabatan' => $jabatan ?: null,
+                        'pangkat_golongan' => $pangkat ?: null,
+                        'no_hp' => $noHp ?: null,
+                        'alamat' => $alamat ?: null,
                         'tim_kerja_id' => $tim?->id,
                         'kapasitas_maks' => $kapasitas > 0 ? $kapasitas : 100,
                     ]
@@ -146,55 +160,100 @@ class ExcelImportExportService
         return ['success_count' => $success, 'errors' => $errors];
     }
 
-    public function importMitra(UploadedFile $file): array
+    public function importMitra(UploadedFile $file, ?int $tahun = null): array
     {
+        @ini_set('max_execution_time', '300');
+        $tahun = $tahun ?: (int) date('Y');
+
         $rows = $this->readRows($file);
         $kecMap = Kecamatan::all()->keyBy(fn ($k) => mb_strtolower(trim($k->nama)));
+        $defaultPasswordHash = Hash::make('bps3307');
 
         $success = 0;
         $errors = [];
 
         foreach ($rows as $rowNum => $row) {
-            $idSobat = trim((string) ($row['id_sobat'] ?? ''));
-            $nama = trim((string) ($row['nama_mitra'] ?? ''));
-            $identifier = trim((string) ($row['email_atau_username'] ?? ''));
-            $noHp = trim((string) ($row['no_hp'] ?? ''));
-            $kecNama = trim((string) ($row['kecamatan_domisili'] ?? ''));
-            $kapasitas = (int) ($row['kapasitas_maks_poin'] ?? 100);
+            $nama = trim((string) ($row['nama lengkap'] ?? $row['nama_mitra'] ?? ''));
+            $sobatId = trim((string) ($row['sobat id'] ?? $row['id_sobat'] ?? ''));
+            $emailRaw = trim((string) ($row['email'] ?? $row['email_atau_username'] ?? ''));
+            $noTelp = trim((string) ($row['no telp'] ?? $row['no_hp'] ?? ''));
+            $kecRaw = trim((string) ($row['alamat kecamatan'] ?? $row['kecamatan_domisili'] ?? ''));
 
-            if ($idSobat === '' || $nama === '' || $identifier === '') {
-                $errors[] = "Baris {$rowNum}: id_sobat, nama_mitra, dan email_atau_username wajib diisi.";
+            if ($nama === '') {
+                $errors[] = "Baris {$rowNum}: Nama Lengkap wajib diisi.";
                 continue;
             }
 
-            $kec = $kecNama !== '' ? $kecMap->get(mb_strtolower($kecNama)) : null;
-            if ($kecNama !== '' && !$kec) {
-                $errors[] = "Baris {$rowNum}: Kecamatan '{$kecNama}' tidak ditemukan di Kabupaten Wonosobo.";
+            if ($emailRaw === '' && $sobatId === '') {
+                $errors[] = "Baris {$rowNum} ({$nama}): Email atau SOBAT ID harus terisi salah satu.";
                 continue;
             }
 
-            $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false;
-            $email = $isEmail ? $identifier : "{$identifier}@mitra.bps3307.local";
-            $username = $isEmail ? $idSobat : $identifier;
+            // Normalisasi format "(080) KERTEK" -> "kertek"
+            $kecClean = trim((string) preg_replace('/^\(\d+\)\s*/', '', $kecRaw));
+            $kec = $kecClean !== '' ? $kecMap->get(mb_strtolower($kecClean)) : null;
+
+            $isEmail = filter_var($emailRaw, FILTER_VALIDATE_EMAIL) !== false;
+            $email = $isEmail ? mb_strtolower($emailRaw) : ($sobatId !== '' ? "{$sobatId}@mitra.bps3307.local" : mb_strtolower(preg_replace('/[^a-z0-9]/i', '', $nama)) . "{$rowNum}@mitra.bps3307.local");
 
             try {
-                User::updateOrCreate(
-                    ['email' => $email],
+                $user = User::where('email', $email)->first();
+                if (!$user && $sobatId !== '') {
+                    $user = User::where('id_sobat', $sobatId)->first();
+                }
+
+                if (!$user) {
+                    $user = new User();
+                    $user->email = $email;
+                    $user->password = $defaultPasswordHash;
+                    $user->role = 'mitra';
+                    $user->tipe = 'mitra';
+                    $user->kapasitas_maks = 100;
+                }
+
+                $user->name = $nama;
+                $user->id_sobat = $sobatId !== '' ? $sobatId : $user->id_sobat;
+                $user->no_hp = $noTelp !== '' ? $noTelp : $user->no_hp;
+                $user->alamat = trim((string) ($row['alamat detail'] ?? '')) ?: $user->alamat;
+                $user->kecamatan_id = $kec?->id ?? $user->kecamatan_id;
+                $user->username = $user->username ?: ($sobatId !== '' ? $sobatId : null);
+                $user->save();
+
+                $umurRaw = trim((string) ($row['umur'] ?? ''));
+
+                MitraKepka::updateOrCreate(
                     [
-                        'name' => $nama,
-                        'username' => $username,
-                        'password' => Hash::make($idSobat),
-                        'role' => 'mitra',
-                        'tipe' => 'mitra',
-                        'id_sobat' => $idSobat,
-                        'no_hp' => $noHp ?: null,
-                        'kecamatan_id' => $kec?->id,
-                        'kapasitas_maks' => $kapasitas > 0 ? $kapasitas : 100,
+                        'user_id' => $user->id,
+                        'tahun' => $tahun,
+                    ],
+                    [
+                        'nama_lengkap' => $nama,
+                        'posisi' => trim((string) ($row['posisi'] ?? '')) ?: null,
+                        'status_seleksi' => trim((string) ($row['status seleksi'] ?? '')) ?: null,
+                        'alamat_detail' => trim((string) ($row['alamat detail'] ?? '')) ?: null,
+                        'alamat_provinsi' => trim((string) ($row['alamat provinsi'] ?? '')) ?: null,
+                        'alamat_kab' => trim((string) ($row['alamat kab/kota'] ?? '')) ?: null,
+                        'alamat_kecamatan' => $kecRaw !== '' ? $kecRaw : null,
+                        'alamat_desa' => trim((string) ($row['alamat desa/kel'] ?? '')) ?: null,
+                        'ttl' => trim((string) ($row['tempat, tanggal lahir'] ?? '')) ?: null,
+                        'umur' => is_numeric($umurRaw) ? (int) $umurRaw : null,
+                        'jenis_kelamin' => trim((string) ($row['jenis kelamin'] ?? '')) ?: null,
+                        'status_kawin' => trim((string) ($row['status kawin'] ?? '')) ?: null,
+                        'pendidikan' => trim((string) ($row['pendidikan'] ?? '')) ?: null,
+                        'pekerjaan' => trim((string) ($row['pekerjaan'] ?? '')) ?: null,
+                        'deskripsi_pekerjaan_lain' => trim((string) ($row['deskripsi pekerjaan lain'] ?? '')) ?: null,
+                        'terikat_kldi' => trim((string) ($row['terikat kontrak kldi lain'] ?? '')) ?: null,
+                        'nama_kldi' => trim((string) ($row['nama kldi'] ?? '')) ?: null,
+                        'keterangan_kldi' => trim((string) ($row['keterangan kldi'] ?? '')) ?: null,
+                        'no_telp' => $noTelp !== '' ? $noTelp : null,
+                        'sobat_id' => $sobatId !== '' ? $sobatId : null,
+                        'email' => $emailRaw !== '' ? $emailRaw : $email,
                     ]
                 );
+
                 $success++;
             } catch (Throwable $e) {
-                $errors[] = "Baris {$rowNum}: Gagal menyimpan ({$e->getMessage()}).";
+                $errors[] = "Baris {$rowNum} ({$nama}): Gagal menyimpan ({$e->getMessage()}).";
             }
         }
 
