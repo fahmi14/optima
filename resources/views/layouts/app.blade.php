@@ -137,9 +137,9 @@
                         <i data-lucide="briefcase" class="w-4 h-4 {{ request()->routeIs('tim.*') ? 'text-white' : 'text-slate-400' }}"></i>
                         <span>Tim Kerja</span>
                     </a>
-                    <a href="{{ route('kecamatan.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('kecamatan.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
-                        <i data-lucide="map-pin" class="w-4 h-4 {{ request()->routeIs('kecamatan.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                        <span>Kecamatan Wonosobo</span>
+                    <a href="{{ route('master.wilayah.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('master.wilayah.*') || request()->routeIs('kecamatan.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="map" class="w-4 h-4 {{ request()->routeIs('master.wilayah.*') || request()->routeIs('kecamatan.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>Master Wilayah</span>
                     </a>
                     <a href="{{ route('pengaturan.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('pengaturan.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
                         <i data-lucide="settings" class="w-4 h-4 {{ request()->routeIs('pengaturan.*') ? 'text-white' : 'text-slate-400' }}"></i>
@@ -262,6 +262,7 @@
     </div>
 
     @include('components.chat-widget')
+    @include('components.confirm-modal')
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

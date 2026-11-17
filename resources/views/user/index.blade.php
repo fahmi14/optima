@@ -94,7 +94,7 @@
                             <td class="py-3 px-4 text-right space-x-1">
                                 <button @click="editUser = {{ $u->toJson() }}" class="inline-flex items-center px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">Edit</button>
                                 @if($u->id !== auth()->id())
-                                <form method="POST" action="{{ route('user.destroy', $u) }}" class="inline" onsubmit="return confirm('Hapus pengguna ini?')">
+                                <form method="POST" action="{{ route('user.destroy', $u) }}" class="inline" onsubmit="return optimaConfirm(event, 'Hapus pengguna {{ $u->name }}?', 'Hapus Pengguna')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="inline-flex items-center px-2.5 py-1 text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg cursor-pointer">Hapus</button>
                                 </form>

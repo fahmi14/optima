@@ -7,7 +7,9 @@ use App\Models\Kecamatan;
 use App\Models\MasterKegiatan;
 use App\Models\Penugasan;
 use App\Models\TimKerja;
+use App\Models\User;
 use App\Services\WorkloadService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -57,8 +59,11 @@ class DashboardController extends Controller
         }
 
         $timKerjaId = $request->filled('tim_kerja_id') ? (int) $request->tim_kerja_id : null;
-        $tipe = $request->filled('tipe') ? $request->tipe : null;
         $kecamatanId = $request->filled('kecamatan_id') ? (int) $request->kecamatan_id : null;
+        $bulanFilter = $request->filled('bulan') ? Carbon::createFromFormat('Y-m', $request->bulan) : now();
+
+        $startOfMonth = $bulanFilter->copy()->startOfMonth();
+        $endOfMonth = $bulanFilter->copy()->endOfMonth();
 
         $totalTugasAktif = Penugasan::where('status', '!=', 'Selesai')->count();
 
@@ -73,20 +78,98 @@ class DashboardController extends Controller
 
         $totalSerapanTransport = (float) AlokasiTransport::where('status_spj', '!=', 'Ditolak')->sum('nominal');
 
-        $workloadMap = $this->workloadService->getWorkloadMap($timKerjaId, $tipe);
+        // 1. BEBAN PEGAWAI ORGANIK (DITAMPILKAN SEMUA, DIURUTKAN BEBAN TERBESAR BULAN INI)
+        $organikUsers = User::with(['timKerja', 'kecamatan'])
+            ->where('tipe', 'organik')
+            ->when($timKerjaId, fn($q) => $q->where('tim_kerja_id', $timKerjaId))
+            ->get();
 
+        $pegawaiBebanList = $organikUsers->map(function (User $u) use ($bulanFilter) {
+            $w = $this->workloadService->calculateUserWorkload($u, $bulanFilter);
+            return [
+                'user' => $u,
+                'workload' => $w,
+            ];
+        })->sortByDesc(fn($item) => $item['workload']['total_jam'])->values();
+
+        // 2. BEBAN MITRA STATISTIK (HANYA YANG SUDAH TERALOKASIKAN KE KEGIATAN PADA BULAN INI)
+        // Optimasi: Hanya query user mitra yang memiliki penugasan di bulan yang bersangkutan
+        $mitraUsers = User::with(['timKerja', 'kecamatan'])
+            ->where('tipe', 'mitra')
+            ->whereHas('penugasans', function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->where(function ($subQ) use ($startOfMonth, $endOfMonth) {
+                    $subQ->whereBetween('deadline_tugas', [$startOfMonth, $endOfMonth])
+                         ->orWhere(function ($activeQ) {
+                             $activeQ->whereNull('deadline_tugas')->where('status', '!=', 'Selesai');
+                         });
+                });
+            })
+            ->get();
+
+        $sbmlLimit = $this->workloadService->getSbmlMitra();
+        $kuotaJamBulan = $this->workloadService->getTotalJamKerjaBulan($bulanFilter);
+
+        $mitraBebanList = $mitraUsers->map(function (User $u) use ($bulanFilter, $startOfMonth, $endOfMonth) {
+            $w = $this->workloadService->calculateUserWorkload($u, $bulanFilter);
+
+            // Ambil daftar penugasan detail mitra untuk modal rincian kegiatan & honor
+            $tasks = Penugasan::with('subKegiatan.periodeKegiatan.masterKegiatan')
+                ->where('user_id', $u->id)
+                ->where(function ($subQ) use ($startOfMonth, $endOfMonth) {
+                    $subQ->whereBetween('deadline_tugas', [$startOfMonth, $endOfMonth])
+                         ->orWhere(function ($activeQ) {
+                             $activeQ->whereNull('deadline_tugas')->where('status', '!=', 'Selesai');
+                         });
+                })
+                ->get()
+                ->map(function ($t) {
+                    $satuanHonor = (float) ($t->honor_satuan ?: ($t->subKegiatan?->honor_per_satuan ?? 0));
+                    $honorTotal = (float) ($t->honor_total ?: ($satuanHonor * (int) $t->target_volume));
+                    return [
+                        'kegiatan' => $t->subKegiatan?->periodeKegiatan?->masterKegiatan?->nama ?? 'Kegiatan',
+                        'tahapan' => $t->subKegiatan?->nama ?? 'Tahapan',
+                        'target' => $t->target_volume . ' ' . $t->satuan_volume,
+                        'honor' => $honorTotal,
+                        'deadline' => $t->deadline_tugas ? $t->deadline_tugas->format('d/m/Y') : '-',
+                        'status' => $t->status,
+                    ];
+                });
+
+            return [
+                'user' => $u,
+                'workload' => $w,
+                'tasks' => $tasks,
+            ];
+        })->sortByDesc(fn($item) => $item['workload']['total_honor'])->values();
+
+        // 3. JADWAL TURUN LAPANGAN GROUPING PER KEGIATAN DENGAN INFO PETUGAS & WILAYAH
         $jadwalQuery = AlokasiTransport::with([
             'user',
             'kecamatan',
             'periodeKegiatan.masterKegiatan.timKerja',
             'penugasan.subKegiatan',
-        ])->orderBy('tgl_tugas');
+        ])
+        ->whereBetween('tgl_tugas', [$startOfMonth, $endOfMonth])
+        ->orderBy('tgl_tugas');
 
         if ($kecamatanId) {
             $jadwalQuery->where('kecamatan_id', $kecamatanId);
         }
 
-        $jadwalLapangan = $jadwalQuery->take(20)->get();
+        $allJadwal = $jadwalQuery->get();
+
+        // Grouping per kegiatan (Master Kegiatan + Nama Tahapan)
+        $groupedJadwalLapangan = $allJadwal->groupBy(function ($item) {
+            $keg = $item->periodeKegiatan?->masterKegiatan?->nama ?? 'Kegiatan Lapangan';
+            $tahap = $item->penugasan?->subKegiatan?->nama ?? 'Pendataan';
+            return "{$keg} - {$tahap}";
+        })->map(function ($items, $key) {
+            return [
+                'nama_group' => $key,
+                'total_turlap' => $items->count(),
+                'items' => $items,
+            ];
+        });
 
         $kegiatans = MasterKegiatan::with([
             'timKerja',
@@ -102,14 +185,17 @@ class DashboardController extends Controller
             'tugasMendekatiDeadline',
             'tugasOverdue',
             'totalSerapanTransport',
-            'workloadMap',
-            'jadwalLapangan',
+            'pegawaiBebanList',
+            'mitraBebanList',
+            'groupedJadwalLapangan',
+            'sbmlLimit',
+            'kuotaJamBulan',
             'kegiatans',
             'timKerjas',
             'kecamatans',
             'timKerjaId',
-            'tipe',
-            'kecamatanId'
+            'kecamatanId',
+            'bulanFilter'
         ));
     }
 }

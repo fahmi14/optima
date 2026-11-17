@@ -14,7 +14,10 @@ class Penugasan extends Model
     protected $fillable = [
         'sub_kegiatan_id',
         'user_id',
+        'pengawas_id',
         'kecamatan_id',
+        'level_wilayah',
+        'wilayah_tugas',
         'target_volume',
         'satuan_volume',
         'realisasi_volume',
@@ -43,6 +46,7 @@ class Penugasan extends Model
             'honor_total' => 'decimal:2',
             'deadline_tugas' => 'date',
             'verified_at' => 'datetime',
+            'wilayah_tugas' => 'array',
         ];
     }
 
@@ -54,6 +58,11 @@ class Penugasan extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function pengawas(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pengawas_id');
     }
 
     public function kecamatan(): BelongsTo

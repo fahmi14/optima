@@ -84,7 +84,7 @@
                                 <button @click="addPeriodeMaster = {{ $master->toJson() }}" class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg cursor-pointer">
                                     + Tambah Periode
                                 </button>
-                                <form method="POST" action="{{ route('kegiatan.master.destroy', $master) }}" class="inline" onsubmit="return confirm('Hapus Master Kegiatan {{ $master->nama }} beserta seluruh periode dan tugasnya?')">
+                                <form method="POST" action="{{ route('kegiatan.master.destroy', $master) }}" class="inline" onsubmit="return optimaConfirm(event, 'Hapus Master Kegiatan {{ $master->nama }} beserta seluruh periode dan penugasannya?', 'Hapus Master Kegiatan')">
                                     @csrf @method('DELETE')
                                     <button type="submit" title="Hapus Master Kegiatan" class="inline-flex items-center p-1 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -120,7 +120,7 @@
                                         <span>Kelola Tahapan &amp; Tugas</span>
                                         <i data-lucide="arrow-right" class="w-3 h-3"></i>
                                     </a>
-                                    <form method="POST" action="{{ route('kegiatan.periode.destroy', $per) }}" class="inline" onsubmit="return confirm('Hapus periode {{ $per->nama_periode }}?')">
+                                    <form method="POST" action="{{ route('kegiatan.periode.destroy', $per) }}" class="inline" onsubmit="return optimaConfirm(event, 'Hapus periode {{ $per->nama_periode }} beserta seluruh tahapan di dalamnya?', 'Hapus Periode')">
                                         @csrf @method('DELETE')
                                         <button type="submit" title="Hapus Periode" class="inline-flex items-center p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer">
                                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>

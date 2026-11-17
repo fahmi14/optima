@@ -15,6 +15,8 @@ class SubKegiatan extends Model
         'periode_kegiatan_id',
         'nama',
         'jenis_tahapan',
+        'level_wilayah',
+        'ada_pengawas',
         'deadline_tahapan',
         'urutan',
         'estimasi_jam_per_satuan',
@@ -25,6 +27,7 @@ class SubKegiatan extends Model
     {
         return [
             'deadline_tahapan' => 'date',
+            'ada_pengawas' => 'boolean',
             'urutan' => 'integer',
             'estimasi_jam_per_satuan' => 'decimal:2',
             'honor_per_satuan' => 'decimal:2',

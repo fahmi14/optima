@@ -88,7 +88,7 @@
                                     <a href="{{ route('wilayah.edit', $w) }}" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition" title="Edit">
                                         <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                     </a>
-                                    <form action="{{ route('wilayah.destroy', $w) }}" method="POST" onsubmit="return confirm('Hapus wilayah ini?')" class="inline">
+                                    <form action="{{ route('wilayah.destroy', $w) }}" method="POST" onsubmit="return optimaConfirm(event, 'Hapus wilayah {{ $w->nama ?? ($w->kec . ' - ' . $w->desa) }}?', 'Hapus Wilayah')" class="inline">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition" title="Hapus">

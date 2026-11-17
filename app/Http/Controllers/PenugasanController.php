@@ -84,6 +84,46 @@ class PenugasanController extends Controller
         }
     }
 
+    public function update(Request $request, Penugasan $penugasan): RedirectResponse
+    {
+        $data = $request->validate([
+            'kecamatan_id' => ['nullable', 'exists:kecamatans,id'],
+            'target_volume' => ['required', 'integer', 'min:1'],
+            'satuan_volume' => ['required', 'string', 'max:50'],
+            'deadline_tugas' => ['nullable', 'date'],
+            'status' => ['required', 'in:Belum Mulai,Berjalan,Menunggu Verifikasi,Selesai,Revisi'],
+            'wilayah_tugas' => ['nullable', 'string'],
+        ]);
+
+        $sub = $penugasan->subKegiatan;
+        $jamPerSatuan = (float) ($sub?->estimasi_jam_per_satuan ?: 1);
+        $honorSatuan = (float) ($sub?->honor_per_satuan ?: 0);
+        $targetVol = (int) $data['target_volume'];
+
+        $jamTotal = round($targetVol * $jamPerSatuan, 2);
+        $honorTotal = round($targetVol * $honorSatuan, 2);
+
+        $cleanedWilayah = null;
+        if (!empty($data['wilayah_tugas'])) {
+            $cleanedWilayah = array_values(array_filter(array_map('trim', explode(',', (string) $data['wilayah_tugas']))));
+        }
+
+        $penugasan->update([
+            'kecamatan_id' => $data['kecamatan_id'] ?? null,
+            'target_volume' => $targetVol,
+            'satuan_volume' => $data['satuan_volume'],
+            'deadline_tugas' => $data['deadline_tugas'] ?? $penugasan->deadline_tugas,
+            'status' => $data['status'],
+            'estimasi_jam_total' => $jamTotal,
+            'bobot_poin' => (int) round($jamTotal),
+            'honor_satuan' => $honorSatuan,
+            'honor_total' => $honorTotal,
+            'wilayah_tugas' => $cleanedWilayah ?: $penugasan->wilayah_tugas,
+        ]);
+
+        return back()->with('success', "Penugasan untuk {$penugasan->user?->name} berhasil diperbarui.");
+    }
+
     public function verify(Request $request, Penugasan $penugasan): RedirectResponse
     {
         $data = $request->validate([

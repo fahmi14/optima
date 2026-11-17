@@ -7,11 +7,13 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\KecamatanController;
+use App\Http\Controllers\MasterWilayahController;
 use App\Http\Controllers\KegiatanController;
 use App\Http\Controllers\MitraController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\PenugasanController;
+use App\Http\Controllers\PenugasanWizardController;
 use App\Http\Controllers\TimKerjaController;
 use App\Http\Controllers\TransportController;
 use App\Http\Controllers\TugasSayaController;
@@ -39,6 +41,9 @@ Route::middleware('auth')->group(function () {
 
     // Kalender Pekerjaan
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender.index');
+
+    // Autocomplete API Wilayah Tugas (Kecamatan, Desa, SLS, Sub-SLS, NKS)
+    Route::get('/api/wilayah/search', [MasterWilayahController::class, 'search'])->name('api.wilayah.search');
 
     // Chat (General & Privat)
     Route::get('/chat/users', [ChatController::class, 'users'])->name('chat.users');
@@ -76,11 +81,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/master/tim/{tim}', [TimKerjaController::class, 'update'])->name('tim.update');
         Route::delete('/master/tim/{tim}', [TimKerjaController::class, 'destroy'])->name('tim.destroy');
 
-        // Master Kecamatan
-        Route::get('/master/kecamatan', [KecamatanController::class, 'index'])->name('kecamatan.index');
-        Route::post('/master/kecamatan', [KecamatanController::class, 'store'])->name('kecamatan.store');
-        Route::put('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'update'])->name('kecamatan.update');
-        Route::delete('/master/kecamatan/{kecamatan}', [KecamatanController::class, 'destroy'])->name('kecamatan.destroy');
+        // Master Wilayah (5 Level: Kecamatan, Desa, SLS, Sub-SLS, NKS)
+        Route::get('/master/wilayah', [MasterWilayahController::class, 'index'])->name('master.wilayah.index');
+        Route::post('/master/wilayah', [MasterWilayahController::class, 'store'])->name('master.wilayah.store');
+        Route::put('/master/wilayah/{id}', [MasterWilayahController::class, 'update'])->name('master.wilayah.update');
+        Route::delete('/master/wilayah/{id}', [MasterWilayahController::class, 'destroy'])->name('master.wilayah.destroy');
+        Route::get('/master/wilayah/template/{tab}', [MasterWilayahController::class, 'downloadTemplate'])->name('master.wilayah.template');
+        Route::post('/master/wilayah/import', [MasterWilayahController::class, 'import'])->name('master.wilayah.import');
+
+        // Master Kecamatan (Legacy redirect to Master Wilayah)
+        Route::get('/master/kecamatan', fn() => redirect()->route('master.wilayah.index'))->name('kecamatan.index');
 
         // Pengaturan SBML & Jam Kerja
         Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
@@ -105,7 +115,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/periode/{periode}/clone-sub', [KegiatanController::class, 'cloneSubKegiatan'])->name('kegiatan.sub.clone');
 
         // Distribusi Penugasan & Import Massal
+        Route::get('/sub/{sub}/wizard', [PenugasanWizardController::class, 'create'])->name('penugasan.wizard');
+        Route::get('/sub/{sub}/wizard/petugas-data', [PenugasanWizardController::class, 'petugasData'])->name('penugasan.wizard.petugas_data');
+        Route::post('/sub/{sub}/wizard/petugas-details', [PenugasanWizardController::class, 'selectedPetugasDetails'])->name('penugasan.wizard.petugas_details');
+        Route::post('/sub/{sub}/wizard/batch', [PenugasanWizardController::class, 'storeBatch'])->name('penugasan.wizard.store');
+        Route::get('/sub/{sub}/wizard/template', [PenugasanWizardController::class, 'downloadTemplate'])->name('penugasan.wizard.template');
         Route::post('/sub/{sub}/penugasan', [PenugasanController::class, 'store'])->name('penugasan.store');
+        Route::put('/penugasan/{penugasan}', [PenugasanController::class, 'update'])->name('penugasan.update');
         Route::post('/penugasan/{penugasan}/verify', [PenugasanController::class, 'verify'])->name('penugasan.verify');
         Route::delete('/penugasan/{penugasan}', [PenugasanController::class, 'destroy'])->name('penugasan.destroy');
         Route::get('/penugasan/template', [PenugasanController::class, 'downloadTemplate'])->name('penugasan.template');

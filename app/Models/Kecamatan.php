@@ -15,6 +15,11 @@ class Kecamatan extends Model
         'nama',
     ];
 
+    public function desas()
+    {
+        return $this->hasMany(Desa::class, 'id_kec');
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'kecamatan_id');

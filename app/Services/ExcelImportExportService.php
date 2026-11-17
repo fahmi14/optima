@@ -86,11 +86,11 @@ class ExcelImportExportService
     {
         $headers = [
             'nama_sub_kegiatan', 'nip_atau_id_sobat', 'target_volume', 'satuan_volume',
-            'bobot_poin', 'deadline_tugas', 'dapat_transport', 'kecamatan_tujuan',
+            'estimasi_jam_per_satuan', 'deadline_tugas', 'dapat_transport', 'kecamatan_tujuan',
             'tgl_tugas_transport', 'nominal_transport_per_hari',
         ];
         $samples = [
-            ['Updating', '33072601001', 4, 'BS', 3, '2026-02-12', 'Ya', 'Wonosobo', '2026-02-05, 2026-02-06', 150000],
+            ['Updating', '33072601001', 4, 'Dokumen', 7, '2026-02-12', 'Ya', 'Wonosobo', '2026-02-05, 2026-02-06', 150000],
             ['Pendataan Lapangan', '199103032014031001', 10, 'Ruta', 3, '2026-02-20', 'Tidak', 'Kertek', '', 0],
         ];
 
@@ -354,7 +354,13 @@ class ExcelImportExportService
             $identitas = trim((string) ($row['nip_atau_id_sobat'] ?? ''));
             $targetVol = (int) ($row['target_volume'] ?? 1);
             $satuan = trim((string) ($row['satuan_volume'] ?? 'Dokumen'));
-            $bobot = (int) ($row['bobot_poin'] ?? 1);
+            $jamPerSatuan = isset($row['estimasi_jam_per_satuan']) && is_numeric($row['estimasi_jam_per_satuan'])
+                ? (float) $row['estimasi_jam_per_satuan']
+                : ((float) ($sub->estimasi_jam_per_satuan ?: 1));
+            $honorSatuan = (float) ($sub->honor_per_satuan ?: 0);
+            $estimasiJamTotal = round($jamPerSatuan * $targetVol, 2);
+            $honorTotal = round($honorSatuan * $targetVol, 2);
+
             $deadline = $this->parseDate($row['deadline_tugas'] ?? null);
             $dapatTransport = mb_strtolower(trim((string) ($row['dapat_transport'] ?? 'tidak')));
             $kecNama = trim((string) ($row['kecamatan_tujuan'] ?? ''));
@@ -384,9 +390,7 @@ class ExcelImportExportService
                 continue;
             }
 
-            if (!in_array($bobot, [1, 3, 5], true)) {
-                $bobot = 1;
-            }
+            $bobot = (int) round($estimasiJamTotal);
 
             $needTransport = in_array($dapatTransport, ['ya', 'yes', '1', 'true'], true);
             $dates = [];
@@ -406,7 +410,7 @@ class ExcelImportExportService
             }
 
             try {
-                DB::transaction(function () use ($sub, $user, $kec, $targetVol, $satuan, $bobot, $deadline, $needTransport, $dates, $nominal) {
+                DB::transaction(function () use ($sub, $user, $kec, $targetVol, $satuan, $bobot, $estimasiJamTotal, $honorSatuan, $honorTotal, $deadline, $needTransport, $dates, $nominal) {
                     $penugasan = Penugasan::create([
                         'sub_kegiatan_id' => $sub->id,
                         'user_id' => $user->id,
@@ -414,6 +418,9 @@ class ExcelImportExportService
                         'target_volume' => max(1, $targetVol),
                         'satuan_volume' => $satuan ?: 'Dokumen',
                         'bobot_poin' => $bobot,
+                        'estimasi_jam_total' => $estimasiJamTotal,
+                        'honor_satuan' => $honorSatuan,
+                        'honor_total' => $honorTotal,
                         'deadline_tugas' => $deadline ?? $sub->deadline_tahapan,
                         'status' => 'Belum Mulai',
                     ]);
