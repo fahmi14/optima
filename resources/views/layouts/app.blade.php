@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - OPTIMA 3307 BPS Kabupaten Wonosobo</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,6 +84,11 @@
                         <i data-lucide="check-square" class="w-4 h-4 {{ request()->routeIs('tugas-saya.*') ? 'text-slate-800' : 'text-slate-400' }}"></i>
                         <span>Tugas Saya</span>
                     </a>
+
+                    <button type="button" @click="sidebarOpen = false; window.dispatchEvent(new CustomEvent('open-chat'))" class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer">
+                        <i data-lucide="message-circle" class="w-4 h-4 text-slate-400"></i>
+                        <span>Chat Tim &amp; Privat</span>
+                    </button>
                 </div>
             </div>
 
@@ -236,6 +242,8 @@
             </footer>
         </main>
     </div>
+
+    @include('components.chat-widget')
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

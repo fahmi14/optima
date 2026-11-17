@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\KecamatanController;
@@ -35,6 +36,11 @@ Route::middleware('auth')->group(function () {
 
     // Kalender Pekerjaan
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender.index');
+
+    // Chat (General & Privat)
+    Route::get('/chat/users', [ChatController::class, 'users'])->name('chat.users');
+    Route::get('/chat/messages', [ChatController::class, 'messages'])->name('chat.messages');
+    Route::post('/chat/messages', [ChatController::class, 'store'])->name('chat.store');
 
     // Tugas Saya (Pegawai Organik & Mitra Statistik, juga tersedia untuk semua user)
     Route::get('/tugas-saya', [TugasSayaController::class, 'index'])->name('tugas-saya.index');
