@@ -36,6 +36,14 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Users (Admin, Organik, Mitra)
+        User::create([
+            'name' => 'admin',
+            'email' => 'admin@optima.local',
+            'password' => Hash::make('admin'),
+            'level' => 'admin',
+            'tipe' => 'organik',
+        ]);
+
         $admin = User::create([
             'name' => 'Administrator',
             'email' => 'admin@bps.go.id',

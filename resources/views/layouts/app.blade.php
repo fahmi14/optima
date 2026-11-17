@@ -138,19 +138,49 @@
                     </a>
                 </div>
             </div>
+
+            @guest
+            <div>
+                <p class="px-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Akun</p>
+                <div class="space-y-1">
+                    <a href="{{ route('login') }}" class="flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition-colors {{ request()->routeIs('login') ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="log-in" class="w-4 h-4 {{ request()->routeIs('login') ? 'text-slate-800' : 'text-slate-400' }}"></i>
+                        <span>Login</span>
+                    </a>
+                </div>
+            </div>
+            @endguest
         </div>
 
         <!-- Sidebar Footer Status -->
         <div class="p-3 border-t border-slate-100">
-            <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
-                <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-semibold">
-                    <i data-lucide="user" class="w-3.5 h-3.5"></i>
+            @auth
+                <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                    <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-semibold shrink-0">
+                        <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-slate-800 truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-[10px] text-slate-400 truncate">{{ auth()->user()->email }}</p>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}" class="shrink-0">
+                        @csrf
+                        <button type="submit" title="Keluar" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-xs font-semibold text-slate-800 truncate">Administrator</p>
-                    <p class="text-[10px] text-slate-400 truncate">admin@bps.go.id</p>
-                </div>
-            </div>
+            @else
+                <a href="{{ route('login') }}" class="flex items-center gap-3 p-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
+                    <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-semibold">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-slate-800 truncate">Masuk</p>
+                        <p class="text-[10px] text-slate-400 truncate">Login ke sistem</p>
+                    </div>
+                </a>
+            @endauth
         </div>
     </aside>
 
@@ -165,10 +195,17 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f0f4f1] text-[#3d5a4c] border border-[#d6e3db]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#52796f]"></span>
-                    Mode Admin
-                </span>
+                @auth
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f0f4f1] text-[#3d5a4c] border border-[#d6e3db]">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#52796f]"></span>
+                        Mode {{ ucfirst(auth()->user()->level ?? 'Operator') }}
+                    </span>
+                @else
+                    <a href="{{ route('login') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white hover:bg-slate-900 transition-colors">
+                        <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                        <span>Login</span>
+                    </a>
+                @endauth
             </div>
         </header>
 
