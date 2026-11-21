@@ -11,7 +11,21 @@
     dapatTransport: false,
     verifyTask: null,
     editTask: null,
+    editSub: null,
     activeSubId: {{ $periode->subKegiatans->first()?->id ?? 'null' }},
+
+    openEditSubModal(sub) {
+        this.editSub = {
+            id: sub.id,
+            nama: sub.nama || '',
+            no_surat_tugas: sub.no_surat_tugas || '',
+            jenis_tahapan: sub.jenis_tahapan || 'Lapangan',
+            level_wilayah: sub.level_wilayah || 'kecamatan',
+            estimasi_jam_per_satuan: Number(sub.estimasi_jam_per_satuan || 1),
+            honor_per_satuan: Number(sub.honor_per_satuan || 0),
+            deadline_tahapan: sub.deadline_tahapan ? String(sub.deadline_tahapan).substring(0, 10) : ''
+        };
+    },
 
     openEditModal(task) {
         this.editTask = {
@@ -56,8 +70,8 @@
         </div>
     </div>
 
-    <!-- Pagu Transport Summary -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <!-- Pagu Transport & Honor Summary -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
             <span class="text-[11px] font-medium text-slate-400">Pagu Transport Periode</span>
             <p class="text-lg font-bold text-slate-800 mt-1">Rp {{ number_format($periode->pagu_transport, 0, ',', '.') }}</p>
@@ -69,6 +83,10 @@
         <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
             <span class="text-[11px] font-medium text-slate-400">Sisa Pagu Transport</span>
             <p class="text-lg font-bold text-emerald-600 mt-1">Rp {{ number_format($sisaPagu, 0, ',', '.') }}</p>
+        </div>
+        <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-2xs">
+            <span class="text-[11px] font-medium text-indigo-600">Pagu Honor Periode</span>
+            <p class="text-lg font-bold text-indigo-800 mt-1">Rp {{ number_format($periode->pagu_honor ?? 0, 0, ',', '.') }}</p>
         </div>
     </div>
 
@@ -120,6 +138,11 @@
                                 @endif
                             </div>
                             <h3 class="text-base font-bold text-slate-800">{{ $sub->nama }}</h3>
+                            @if($sub->no_surat_tugas)
+                                <p class="text-[11px] font-semibold text-slate-500">
+                                    No. Surat Tugas: <span class="font-mono text-slate-700">{{ $sub->no_surat_tugas }}</span>
+                                </p>
+                            @endif
                         </div>
 
                         <div class="flex items-center gap-2">
@@ -127,6 +150,10 @@
                                 <i data-lucide="users" class="w-3.5 h-3.5"></i>
                                 <span>Distribusi Petugas (Wizard)</span>
                             </a>
+                            <button type="button" @click="openEditSubModal({{ $sub->toJson() }})" class="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 rounded-xl transition cursor-pointer" title="Edit tahapan ini">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                <span>Edit</span>
+                            </button>
                             <form method="POST" action="{{ route('kegiatan.sub.destroy', $sub) }}" onsubmit="return optimaConfirm(event, 'Tahapan {{ $sub->nama }} beserta seluruh penugasan di dalamnya akan dihapus permanen. Lanjutkan?', 'Hapus Tahapan Kegiatan')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition cursor-pointer" title="Hapus tahapan ini">
@@ -196,9 +223,15 @@
                                         <td class="py-3.5 px-4">
                                             @if($tugas->alokasiTransports->isNotEmpty())
                                                 @foreach($tugas->alokasiTransports as $tr)
-                                                    <span class="inline-block px-2 py-0.5 mb-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">
-                                                        {{ $tr->tgl_tugas->format('d/m') }}: Rp {{ number_format($tr->nominal, 0, ',', '.') }}
-                                                    </span>
+                                                    @if($tr->tgl_tugas)
+                                                        <span class="inline-block px-2 py-0.5 mb-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">
+                                                            {{ $tr->tgl_tugas->format('d/m') }}: Rp {{ number_format($tr->nominal, 0, ',', '.') }}
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-block px-2 py-0.5 mb-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-md">
+                                                            Hari ke-{{ $tr->hari_ke ?? 1 }} (Menunggu Petugas)
+                                                        </span>
+                                                    @endif
                                                 @endforeach
                                             @else
                                                 <span class="text-slate-400">-</span>
@@ -319,6 +352,72 @@
         </div>
     </div>
 
+    <!-- Modal Edit Tahapan (Sub-Kegiatan) -->
+    <div x-show="editSub" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 sm:p-6 transition-all">
+        <div @click.away="editSub = null" class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100" x-if="editSub">
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                    <span class="inline-block px-3 py-1 text-[10px] font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">Edit Tahapan</span>
+                    <h3 class="text-lg font-bold text-slate-800 tracking-tight mt-1" x-text="editSub.nama"></h3>
+                </div>
+                <button @click="editSub = null" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form method="POST" :action="'/sub/' + editSub.id" class="space-y-4 text-xs">
+                @csrf
+                @method('PUT')
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Nama Tahapan</label>
+                    <input type="text" name="nama" x-model="editSub.nama" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white font-semibold focus:outline-none focus:ring-1 focus:ring-slate-400">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Nomor Surat Tugas <span class="text-slate-400 font-normal">(Opsional / Boleh Kosong)</span></label>
+                    <input type="text" name="no_surat_tugas" x-model="editSub.no_surat_tugas" placeholder="Contoh: B-123/3307/ST/2026" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white font-mono focus:outline-none focus:ring-1 focus:ring-slate-400">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Jenis Tahapan</label>
+                        <select name="jenis_tahapan" x-model="editSub.jenis_tahapan" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none">
+                            <option value="Lapangan">Lapangan</option>
+                            <option value="Teknis">Teknis</option>
+                            <option value="Administrasi">Administrasi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Level Wilayah</label>
+                        <select name="level_wilayah" x-model="editSub.level_wilayah" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none">
+                            <option value="kecamatan">Kecamatan</option>
+                            <option value="desa">Desa</option>
+                            <option value="sls">SLS (RT/RW)</option>
+                            <option value="sub_sls">Sub-SLS</option>
+                            <option value="nks">NKS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Estimasi Jam / Satuan</label>
+                        <input type="number" step="0.5" name="estimasi_jam_per_satuan" x-model.number="editSub.estimasi_jam_per_satuan" min="0.1" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1.5">Honor / Satuan (Rp)</label>
+                        <input type="number" name="honor_per_satuan" x-model.number="editSub.honor_per_satuan" min="0" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Deadline Tahapan</label>
+                    <input type="date" name="deadline_tahapan" x-model="editSub.deadline_tahapan" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white">
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <button type="button" @click="editSub = null" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer font-semibold">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition shadow-2xs cursor-pointer">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal Tambah Sub-Kegiatan -->
     <div x-show="openSub" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 sm:p-6 transition-all">
         <div @click.away="openSub = false" class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100">
@@ -337,6 +436,10 @@
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1.5">Nama Tahapan</label>
                     <input type="text" name="nama" required placeholder="Contoh: Pencacahan Lapangan / Pengolahan Dokumen" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1.5">Nomor Surat Tugas <span class="text-slate-400 font-normal">(Opsional / Boleh Kosong)</span></label>
+                    <input type="text" name="no_surat_tugas" placeholder="Contoh: B-123/3307/ST/2026" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 font-mono">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>

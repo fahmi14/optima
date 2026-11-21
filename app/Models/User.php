@@ -69,6 +69,11 @@ class User extends Authenticatable
         return $this->hasMany(MitraKepka::class, 'user_id');
     }
 
+    public function masterMitra(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(MasterMitra::class, 'user_id');
+    }
+
     public function roleLabel(): string
     {
         return match ($this->role) {

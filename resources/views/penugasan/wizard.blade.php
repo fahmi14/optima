@@ -38,7 +38,12 @@
                     <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 shrink-0"></i>
                     <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0" :class="step === 4 ? 'bg-slate-800 text-white' : (step > 4 ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400')">
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 4 ? 'bg-white/20 text-white' : (step > 4 ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-100 text-slate-500')">4</span>
-                        <span>Pengawas</span>
+                        <span>Pilih Pengawas</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 shrink-0"></i>
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0" :class="step === 5 ? 'bg-slate-800 text-white' : 'text-slate-400'">
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 5 ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500')">5</span>
+                        <span>Honor &amp; Transport Pengawas</span>
                     </div>
                 </div>
             </template>
@@ -706,7 +711,7 @@
                                 </div>
                             </div>
 
-                            <!-- Baris 4: Opsi Alokasi Transportasi Lokal -->
+                            <!-- Baris 4: Opsi Alokasi Transportasi & Perjalanan Dinas -->
                             <div class="p-4 rounded-2xl border text-xs space-y-3"
                                  :class="assign.dapat_transport ? 'bg-amber-50/50 border-amber-200/80' : 'bg-white/80 border-slate-200/80'">
                                 <label class="inline-flex items-center gap-2.5 font-semibold text-slate-700 cursor-pointer">
@@ -715,33 +720,186 @@
                                         :name="'assignments[' + index + '][dapat_transport]'"
                                         value="1"
                                         x-model="assign.dapat_transport"
+                                        @change="if(assign.dapat_transport) recalculateTransport(assign)"
                                         class="w-4 h-4 rounded border-slate-300 text-slate-800 focus:ring-slate-400"
                                     >
-                                    <span>Alokasikan Transportasi Lokal (SPJ Lapangan)</span>
+                                    <span>Alokasikan Transportasi / Perjalanan Dinas (SPJ Lapangan)</span>
                                 </label>
-                                <div x-show="assign.dapat_transport" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                                    <div>
-                                        <label class="block font-semibold text-slate-700 mb-1">
-                                            Tanggal Tugas Lapangan (YYYY-MM-DD, pisah koma) <span class="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            :name="'assignments[' + index + '][tgl_tugas_transport]'"
-                                            x-model="assign.tgl_tugas_transport"
-                                            placeholder="2026-02-05, 2026-02-06"
-                                            class="w-full border rounded-xl px-3.5 py-2 bg-white focus:outline-none focus:ring-1"
-                                            :class="assign.tgl_tugas_transport && assign.tgl_tugas_transport.trim() !== '' ? 'border-slate-200 focus:ring-slate-400' : 'border-rose-300 ring-1 ring-rose-200'"
-                                        >
+
+                                <div x-show="assign.dapat_transport" class="space-y-4 pt-2 border-t border-amber-200/50">
+                                    <!-- Pertanyaan: Perjalanan Dinas Ke Mana? -->
+                                    <div class="space-y-2">
+                                        <label class="block font-bold text-slate-800">Perjalanan Dinas ke mana?</label>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <label
+                                                @click="setJenisPerjalanan(assign, 'dalam_kab')"
+                                                class="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition"
+                                                :class="assign.jenis_perjalanan === 'dalam_kab' ? 'bg-white border-indigo-500 ring-1 ring-indigo-200 shadow-2xs' : 'bg-white/60 border-slate-200 hover:bg-white'"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    :name="'assignments[' + index + '][jenis_perjalanan]'"
+                                                    value="dalam_kab"
+                                                    x-model="assign.jenis_perjalanan"
+                                                    class="text-indigo-600"
+                                                >
+                                                <div>
+                                                    <span class="font-bold text-slate-800 block">Dalam Kabupaten Wonosobo</span>
+                                                    <span class="text-[10px] text-slate-400">Asal default: Kec. Wonosobo (Maks Rp {{ number_format($maksDalamKab, 0, ',', '.') }}/hr)</span>
+                                                </div>
+                                            </label>
+
+                                            <label
+                                                @click="setJenisPerjalanan(assign, 'luar_kab')"
+                                                class="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition"
+                                                :class="assign.jenis_perjalanan === 'luar_kab' ? 'bg-white border-indigo-500 ring-1 ring-indigo-200 shadow-2xs' : 'bg-white/60 border-slate-200 hover:bg-white'"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    :name="'assignments[' + index + '][jenis_perjalanan]'"
+                                                    value="luar_kab"
+                                                    x-model="assign.jenis_perjalanan"
+                                                    class="text-indigo-600"
+                                                >
+                                                <div>
+                                                    <span class="font-bold text-slate-800 block">Luar Kabupaten</span>
+                                                    <span class="text-[10px] text-slate-400">Asal default: Kab. Wonosobo (Tarif Rp {{ number_format($tarifLuarKab, 0, ',', '.') }}/hr)</span>
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block font-semibold text-slate-700 mb-1">Nominal per Hari (Rp)</label>
-                                        <input
-                                            type="number"
-                                            :name="'assignments[' + index + '][nominal_transport]'"
-                                            x-model.number="assign.nominal_transport"
-                                            min="0"
-                                            class="w-full border border-slate-200 rounded-xl px-3.5 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
-                                        >
+
+                                    <!-- Jika DALAM KABUPATEN: Asal Default Kec. Wonosobo + Rute Tujuan (>1 Kecamatan) -->
+                                    <div x-show="assign.jenis_perjalanan === 'dalam_kab'" class="space-y-3 p-3.5 rounded-xl bg-white/90 border border-slate-200/80">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block font-semibold text-slate-700 mb-1">Kecamatan Asal (Default: Wonosobo)</label>
+                                                <select
+                                                    x-model="assign.asal_kec_id"
+                                                    @change="assign.asal_perjalanan = 'Kec. ' + (kecamatanNamesMap[assign.asal_kec_id] || 'Wonosobo'); recalculateTransport(assign)"
+                                                    class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 focus:bg-white focus:outline-none font-semibold"
+                                                >
+                                                    @foreach($kecamatans as $kec)
+                                                        <option value="{{ $kec->id }}">Kec. {{ $kec->nama }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="hidden" :name="'assignments[' + index + '][asal_perjalanan]'" :value="assign.asal_perjalanan">
+                                            </div>
+
+                                            <div>
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <label class="block font-semibold text-slate-700">Kecamatan Tujuan (Bisa &gt;1 dalam 1 hari)</label>
+                                                    <button
+                                                        type="button"
+                                                        @click="addRuteTujuan(assign)"
+                                                        class="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md cursor-pointer"
+                                                    >
+                                                        + Rute Lanjutan
+                                                    </button>
+                                                </div>
+                                                <div class="space-y-1.5">
+                                                    <template x-for="(tujuanId, rIdx) in assign.rute_tujuan_ids" :key="rIdx">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span class="text-[10px] font-bold text-slate-400 w-4" x-text="(rIdx + 1) + '.'"></span>
+                                                            <select
+                                                                :name="'assignments[' + index + '][rute_transport][]'"
+                                                                x-model="assign.rute_tujuan_ids[rIdx]"
+                                                                @change="recalculateTransport(assign)"
+                                                                class="flex-1 border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none font-semibold"
+                                                            >
+                                                                <option value="">- Pilih Kec. Tujuan -</option>
+                                                                @foreach($kecamatans as $kec)
+                                                                    <option value="{{ $kec->id }}">Kec. {{ $kec->nama }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                @click="removeRuteTujuan(assign, rIdx)"
+                                                                x-show="assign.rute_tujuan_ids.length > 1"
+                                                                class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                                                            >
+                                                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Info Rincian Kalkulasi Rute Otomatis -->
+                                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                                            <div class="text-slate-500">
+                                                Rute: <span class="font-semibold text-slate-700" x-text="assign.rute_summary || 'Pilih kecamatan tujuan'"></span>
+                                            </div>
+                                            <div class="font-bold text-indigo-700" x-show="assign.rute_raw_total > maksDalamKab">
+                                                Total <span x-text="new Intl.NumberFormat('id-ID').format(assign.rute_raw_total)"></span> &rarr; Maksimal Rp {{ number_format($maksDalamKab, 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Jika LUAR KABUPATEN: Asal Default Kab. Wonosobo + Tujuan Luar Kab -->
+                                    <div x-show="assign.jenis_perjalanan === 'luar_kab'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/90 border border-indigo-100">
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Asal (Default: Kabupaten Wonosobo)</label>
+                                            <input
+                                                type="text"
+                                                :name="'assignments[' + index + '][asal_perjalanan]'"
+                                                x-model="assign.asal_perjalanan"
+                                                class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 font-semibold text-slate-800 focus:outline-none"
+                                            >
+                                        </div>
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Tujuan Kabupaten / Kota</label>
+                                            <input
+                                                type="text"
+                                                :name="'assignments[' + index + '][tujuan_luar_kab]'"
+                                                x-model="assign.tujuan_luar_kab"
+                                                placeholder="Contoh: Kota Semarang / Kab. Banjarnegara"
+                                                class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none"
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <!-- Jumlah Hari, Tanggal Tugas (Opsional) & Nominal per Hari -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">
+                                                Jumlah Hari Translok <span class="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                :name="'assignments[' + index + '][jumlah_hari_transport]'"
+                                                x-model.number="assign.jumlah_hari_transport"
+                                                min="1"
+                                                class="w-full border border-slate-200 rounded-xl px-3.5 py-2 bg-white font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                                            >
+                                        </div>
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">
+                                                Tanggal Tugas <span class="text-[10px] font-normal text-slate-400">(Opsional)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                :name="'assignments[' + index + '][tgl_tugas_transport]'"
+                                                x-model="assign.tgl_tugas_transport"
+                                                placeholder="2026-02-05, 2026-02-06 (boleh kosong)"
+                                                class="w-full border border-slate-200 rounded-xl px-3.5 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                                            >
+                                            <p class="text-[10px] text-amber-700 mt-0.5">Jika tujuan/tanggal dikosongkan, petugas wajib mengisinya di Tugas Saya.</p>
+                                        </div>
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">
+                                                Nominal per Hari (Rp)
+                                                <span class="text-[10px] font-normal text-slate-400">(Otomatis / Custom)</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                :name="'assignments[' + index + '][nominal_transport]'"
+                                                x-model.number="assign.nominal_transport"
+                                                min="0"
+                                                class="w-full border border-slate-200 rounded-xl px-3.5 py-2 bg-white font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                                            >
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -845,16 +1003,48 @@
                         <p class="text-xs text-slate-500 mt-0.5">Tentukan pengawas untuk setiap petugas yang telah dipilih di langkah sebelumnya. Anda juga dapat mengatur pengawas secara serentak.</p>
                     </div>
 
-                    <!-- Quick Bulk Supervisor -->
-                    <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 text-xs">
+                    <!-- Quick Bulk Supervisor (Autocomplete) -->
+                    <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 text-xs"
+                         x-data="{
+                            bulkSearch: '',
+                            bulkOpen: false,
+                            selectBulk(pml) {
+                                bulkPengawasId = pml.id;
+                                this.bulkSearch = pml.name;
+                                this.bulkOpen = false;
+                            }
+                         }">
                         <span class="font-bold text-slate-600 text-[11px]">Set Pengawas Serentak:</span>
-                        <select x-model="bulkPengawasId" class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
-                            <option value="">- Pilih Pengawas -</option>
-                            @foreach($pengawasCandidates as $pml)
-                                <option value="{{ $pml->id }}">{{ $pml->name }} ({{ $pml->roleLabel() }})</option>
-                            @endforeach
-                        </select>
-                        <button type="button" @click="applyBulkPengawas()" class="px-2.5 py-1 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-900 transition cursor-pointer">Terapkan Semua</button>
+                        <div class="relative w-64">
+                            <input
+                                type="text"
+                                x-model="bulkSearch"
+                                @focus="bulkOpen = true"
+                                @input="bulkOpen = true; if(!bulkSearch) bulkPengawasId = ''"
+                                @click.outside="bulkOpen = false"
+                                placeholder="Ketik nama pengawas (Organik / Mitra)..."
+                                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                            >
+                            <div x-show="bulkOpen" x-cloak class="absolute z-40 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-xl py-1 divide-y divide-slate-100">
+                                <template x-for="pml in filterPengawas(bulkSearch)" :key="pml.id">
+                                    <div @click="selectBulk(pml)" class="px-3 py-2 hover:bg-indigo-50/60 cursor-pointer flex items-center justify-between gap-2 transition">
+                                        <div class="min-w-0">
+                                            <p class="font-bold text-slate-800 truncate" x-text="pml.name"></p>
+                                            <p class="text-[10px] text-slate-400 truncate" x-text="'Kec. ' + pml.kecamatan_nama"></p>
+                                        </div>
+                                        <span
+                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border"
+                                            :class="pml.tipe === 'organik' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                            x-text="pml.tipe === 'organik' ? 'Organik' : 'Mitra'"
+                                        ></span>
+                                    </div>
+                                </template>
+                                <div x-show="filterPengawas(bulkSearch).length === 0" class="px-3 py-2 text-[11px] text-slate-400 italic text-center">
+                                    Tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" @click="applyBulkPengawas()" class="px-3 py-1.5 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-900 transition cursor-pointer">Terapkan Semua</button>
                     </div>
                 </div>
 
@@ -870,14 +1060,14 @@
                 </div>
 
                 <!-- Tabel Mapping Petugas vs Pengawas -->
-                <div class="border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
+                <div class="border border-slate-200/80 rounded-2xl overflow-visible shadow-2xs">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                             <tr>
                                 <th class="py-3 px-4 w-12 text-center">No</th>
                                 <th class="py-3 px-4">Nama Petugas Terpilih</th>
                                 <th class="py-3 px-4">Wilayah Tugas &amp; Target Beban</th>
-                                <th class="py-3 px-4">Pengawas yang Ditugaskan (PML)</th>
+                                <th class="py-3 px-4 min-w-[300px]">Pengawas yang Ditugaskan (PML)</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -886,7 +1076,7 @@
                                     <td class="py-3 px-4 text-center text-slate-400 font-bold" x-text="index + 1"></td>
                                     <td class="py-3 px-4">
                                         <div class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full" :class="(assign.petugas?.tipe || 'organik') === 'mitra' ? 'bg-sky-500' : 'bg-emerald-500'"></span>
+                                            <span class="w-2 h-2 rounded-full" :class="(assign.petugas?.tipe || 'organik') === 'mitra' ? 'bg-emerald-500' : 'bg-sky-500'"></span>
                                             <span x-text="assign.petugas?.name || ('Petugas #' + assign.user_id)"></span>
                                         </div>
                                         <p class="text-[11px] text-slate-400 mt-0.5">
@@ -906,16 +1096,77 @@
                                         </div>
                                     </td>
                                     <td class="py-3 px-4">
-                                        <select
-                                            :name="'assignments[' + index + '][pengawas_id]'"
-                                            x-model="assign.pengawas_id"
-                                            class="w-full max-w-sm border border-slate-200 rounded-xl px-3.5 py-2.5 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                        >
-                                            <option value="">- Tanpa Pengawas / Mandiri -</option>
-                                            @foreach($pengawasCandidates as $pml)
-                                                <option value="{{ $pml->id }}">{{ $pml->name }} ({{ $pml->roleLabel() }})</option>
-                                            @endforeach
-                                        </select>
+                                        <input type="hidden" :name="'assignments[' + index + '][pengawas_id]'" :value="assign.pengawas_id">
+                                        <div class="relative max-w-sm" x-data="{
+                                            q: '',
+                                            open: false,
+                                            selectedObj() {
+                                                return getPengawasById(assign.pengawas_id);
+                                            },
+                                            choose(pml) {
+                                                assign.pengawas_id = pml.id;
+                                                this.q = pml.name;
+                                                this.open = false;
+                                            },
+                                            clearSelection() {
+                                                assign.pengawas_id = '';
+                                                this.q = '';
+                                            }
+                                        }">
+                                            <!-- Tampilan Terpilih dengan Badge Biru Pastel (Organik) / Hijau Pastel (Mitra) -->
+                                            <div x-show="assign.pengawas_id && selectedObj()" class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <span class="font-bold text-slate-800 truncate" x-text="selectedObj()?.name"></span>
+                                                    <span
+                                                        class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border"
+                                                        :class="selectedObj()?.tipe === 'organik' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                                        x-text="selectedObj()?.tipe === 'organik' ? 'Organik' : 'Mitra'"
+                                                    ></span>
+                                                </div>
+                                                <button type="button" @click="clearSelection()" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer" title="Hapus pengawas">
+                                                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Input Autocomplete jika belum ada pengawas terpilih -->
+                                            <div x-show="!assign.pengawas_id || !selectedObj()" class="relative">
+                                                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none"></i>
+                                                <input
+                                                    type="text"
+                                                    x-model="q"
+                                                    @focus="open = true"
+                                                    @input="open = true"
+                                                    @click.outside="open = false"
+                                                    placeholder="Ketik nama pengawas (Organik / Mitra)..."
+                                                    class="w-full border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                >
+                                                <div
+                                                    x-show="open"
+                                                    x-cloak
+                                                    class="absolute z-40 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-xl py-1 divide-y divide-slate-100"
+                                                >
+                                                    <template x-for="pml in filterPengawas(q)" :key="pml.id">
+                                                        <div
+                                                            @click="choose(pml)"
+                                                            class="px-3.5 py-2 hover:bg-indigo-50/70 cursor-pointer flex items-center justify-between gap-2 transition"
+                                                        >
+                                                            <div class="min-w-0">
+                                                                <p class="font-bold text-slate-800 truncate" x-text="pml.name"></p>
+                                                                <p class="text-[10px] text-slate-400 truncate" x-text="'Kec. ' + pml.kecamatan_nama + ' • ' + pml.role_label"></p>
+                                                            </div>
+                                                            <span
+                                                                class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border"
+                                                                :class="pml.tipe === 'organik' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                                                x-text="pml.tipe === 'organik' ? 'Organik' : 'Mitra'"
+                                                            ></span>
+                                                        </div>
+                                                    </template>
+                                                    <div x-show="filterPengawas(q).length === 0" class="px-3.5 py-2.5 text-[11px] text-slate-400 italic text-center">
+                                                        Nama pengawas tidak ditemukan.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             </template>
@@ -934,16 +1185,150 @@
                             @click="skipPengawas()"
                             class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer font-semibold text-xs"
                         >
-                            Lewati Pengawas
+                            Lewati &amp; Simpan Tanpa Pengawas
                         </button>
                         <button
-                            type="submit"
+                            type="button"
+                            @click="proceedToStep5()"
                             class="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition shadow-2xs cursor-pointer text-xs"
                         >
-                            <i data-lucide="check" class="w-4 h-4"></i>
-                            <span>Simpan &amp; Selesaikan Distribusi (<span x-text="assignments.length"></span> Petugas)</span>
+                            <span>Lanjut ke Langkah 5: Honor &amp; Transport Pengawas</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- HALAMAN 5: Atur Honor & Transport Khusus Pengawas (Otomatis Buat Tahapan Pengawasan) -->
+        <!-- ===================================================================== -->
+        <div x-show="step === 5" class="space-y-6">
+            <div class="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xs space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                        <span class="inline-block px-3 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">Langkah 5</span>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight mt-1">Atur Honor &amp; Transport Pengawas</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Saat disimpan, sistem otomatis menambahkan tahapan baru <strong>"Pengawasan - {{ $sub->nama }}"</strong> berisi daftar pengawas di bawah ini beserta honor &amp; transportnya.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 text-xs">
+                        <span class="font-bold text-slate-600 text-[11px]">Set Honor Pengawas Serentak:</span>
+                        <input type="number" x-model.number="bulkPengawasHonor" placeholder="Rp" class="w-28 bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold">
+                        <button type="button" @click="applyBulkPengawasHonor()" class="px-2.5 py-1 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-900 transition cursor-pointer">Terapkan</button>
+                    </div>
+                </div>
+
+                <!-- Jika tidak ada pengawas yang dipilih -->
+                <div x-show="pengawasAssignments.length === 0" class="p-8 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                    <p class="text-sm font-bold text-slate-700">Belum ada pengawas yang dipilih pada Langkah 4</p>
+                    <p class="text-xs text-slate-400">Silakan kembali ke Langkah 4 untuk memilih pengawas, atau klik Simpan untuk mendistribusikan petugas pendata saja.</p>
+                </div>
+
+                <!-- Daftar Card Pengawas -->
+                <div class="space-y-4">
+                    <template x-for="(pmlAssign, pIdx) in pengawasAssignments" :key="pmlAssign.user_id">
+                        <div class="p-5 rounded-2xl border border-indigo-200/80 bg-indigo-50/25 space-y-4 shadow-2xs">
+                            <input type="hidden" :name="'pengawas_assignments[' + pIdx + '][user_id]'" :value="pmlAssign.user_id">
+                            <input type="hidden" :name="'pengawas_assignments[' + pIdx + '][kecamatan_id]'" :value="pmlAssign.kecamatan_id">
+                            <input type="hidden" :name="'pengawas_assignments[' + pIdx + '][wilayah_tugas]'" :value="pmlAssign.wilayah_tugas">
+
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-indigo-100/70">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full" :class="pmlAssign.tipe === 'mitra' ? 'bg-sky-500' : 'bg-emerald-500'"></span>
+                                        <h3 class="text-base font-bold text-slate-800" x-text="pmlAssign.name"></h3>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-md font-bold capitalize"
+                                              :class="pmlAssign.tipe === 'mitra' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'"
+                                              x-text="pmlAssign.tipe"></span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-0.5">
+                                        Mengawasi <strong class="text-indigo-700" x-text="pmlAssign.supervised_count"></strong> petugas:
+                                        <span class="font-medium text-slate-700" x-text="pmlAssign.supervised_names"></span>
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Total Honor Pengawasan</span>
+                                    <span class="text-sm font-extrabold text-emerald-700">
+                                        Rp <span x-text="new Intl.NumberFormat('id-ID').format((pmlAssign.target_volume || 0) * (pmlAssign.honor_per_satuan || 0))"></span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Input Volume, Satuan, Jam, Honor, Deadline Pengawas -->
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                                <div>
+                                    <label class="block font-semibold text-slate-700 mb-1">Target Volume</label>
+                                    <input type="number" :name="'pengawas_assignments[' + pIdx + '][target_volume]'" x-model.number="pmlAssign.target_volume" min="1" class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white font-bold">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-700 mb-1">Satuan</label>
+                                    <input type="text" :name="'pengawas_assignments[' + pIdx + '][satuan_volume]'" x-model="pmlAssign.satuan_volume" class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-700 mb-1">Jam / Satuan</label>
+                                    <input type="number" step="0.5" :name="'pengawas_assignments[' + pIdx + '][estimasi_jam_per_satuan]'" x-model.number="pmlAssign.estimasi_jam_per_satuan" min="0.5" class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white font-bold">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-700 mb-1">Honor / Satuan (Rp)</label>
+                                    <input type="number" :name="'pengawas_assignments[' + pIdx + '][honor_per_satuan]'" x-model.number="pmlAssign.honor_per_satuan" min="0" class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white font-bold text-emerald-700">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-700 mb-1">Deadline</label>
+                                    <input type="date" :name="'pengawas_assignments[' + pIdx + '][deadline_tugas]'" x-model="pmlAssign.deadline_tugas" class="w-full border border-slate-200 rounded-xl px-3 py-2 bg-white">
+                                </div>
+                            </div>
+
+                            <!-- Opsi Translok Pengawas (Hanya Isi Jumlah Hari, Tujuan Diisi oleh Pengawas) -->
+                            <div class="p-4 rounded-2xl border text-xs space-y-3" :class="pmlAssign.dapat_transport ? 'bg-amber-50/50 border-amber-200/80' : 'bg-white border-slate-200/80'">
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <label class="inline-flex items-center gap-2.5 font-semibold text-slate-700 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            :name="'pengawas_assignments[' + pIdx + '][dapat_transport]'"
+                                            value="1"
+                                            x-model="pmlAssign.dapat_transport"
+                                            class="w-4 h-4 rounded border-slate-300 text-slate-800"
+                                        >
+                                        <span>Alokasikan Translok Pengawas</span>
+                                    </label>
+
+                                    <div x-show="pmlAssign.dapat_transport" class="flex items-center gap-2">
+                                        <label class="font-semibold text-slate-700 whitespace-nowrap">Jumlah Hari Translok:</label>
+                                        <input
+                                            type="number"
+                                            :name="'pengawas_assignments[' + pIdx + '][jumlah_hari_transport]'"
+                                            x-model.number="pmlAssign.jumlah_hari_transport"
+                                            min="1"
+                                            class="w-24 border border-slate-200 rounded-xl px-3 py-1.5 bg-white font-bold text-center text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                        >
+                                        <span class="text-slate-500 font-medium">Hari</span>
+                                    </div>
+                                </div>
+
+                                <div x-show="pmlAssign.dapat_transport" class="p-3 rounded-xl bg-white/80 border border-amber-200/60 text-[11px] text-amber-800 flex items-center gap-2">
+                                    <i data-lucide="info" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                                    <span>Lokasi tujuan lengkap &amp; tanggal tugas akan wajib diisi langsung oleh Pengawas di menu <strong>Tugas Saya</strong> (nominal dihitung otomatis dari Master Transport sesuai rute tujuan).</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Navigasi Langkah 5 -->
+                <div class="flex items-center justify-between pt-6 border-t border-slate-100">
+                    <button type="button" @click="step = 4" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer font-semibold text-xs">
+                        &larr; Kembali ke Pilih Pengawas
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition shadow-2xs cursor-pointer text-xs"
+                    >
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Simpan &amp; Buat Tahapan Pengawasan (<span x-text="assignments.length"></span> Petugas, <span x-text="pengawasAssignments.length"></span> Pengawas)</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -969,6 +1354,9 @@ function penugasanWizard() {
         isLoading: false,
         bulkVolume: 1,
         bulkPengawasId: '',
+        bulkPengawasHonor: {{ (float) ($sub->honor_per_satuan ?: 0) }},
+        pengawasCandidatesList: @json($pengawasCandidates),
+        pengawasAssignments: [],
         assignments: [],
 
         levelOptions: [
@@ -984,6 +1372,12 @@ function penugasanWizard() {
         defaultDeadline: '{{ $sub->deadline_tahapan?->format('Y-m-d') ?? '' }}',
         kuotaJam: {{ (float) $infoBulan['kuota_jam'] }},
         sbml: {{ (float) $infoBulan['sbml'] }},
+
+        transportMatrix: @json($transportMatrix),
+        defaultWonosoboId: '{{ $defaultWonosoboId }}',
+        maksDalamKab: {{ (float) $maksDalamKab }},
+        tarifLuarKab: {{ (float) $tarifLuarKab }},
+        kecamatanNamesMap: @json($kecamatans->pluck('nama', 'id')),
 
         init() {
             this.fetchPetugas(1);
@@ -1116,6 +1510,14 @@ function penugasanWizard() {
                         honor_per_satuan: this.defaultHonorSatuan,
                         deadline_tugas: this.defaultDeadline,
                         dapat_transport: false,
+                        jumlah_hari_transport: 1,
+                        jenis_perjalanan: 'dalam_kab',
+                        asal_kec_id: this.defaultWonosoboId,
+                        asal_perjalanan: 'Kecamatan Wonosobo',
+                        tujuan_luar_kab: '',
+                        rute_tujuan_ids: [pet && pet.kecamatan_id ? String(pet.kecamatan_id) : ''],
+                        rute_summary: '',
+                        rute_raw_total: 0,
                         tgl_tugas_transport: '',
                         nominal_transport: 150000,
                     });
@@ -1131,6 +1533,62 @@ function penugasanWizard() {
             if (!assign.wilayah_tugas) assign.wilayah_tugas = [];
             assign.wilayah_tugas.push('');
             this.$nextTick(() => { lucide.createIcons(); });
+        },
+
+        setJenisPerjalanan(assign, jenis) {
+            assign.jenis_perjalanan = jenis;
+            if (jenis === 'dalam_kab') {
+                assign.asal_kec_id = assign.asal_kec_id || this.defaultWonosoboId;
+                assign.asal_perjalanan = 'Kec. ' + (this.kecamatanNamesMap[assign.asal_kec_id] || 'Wonosobo');
+                this.recalculateTransport(assign);
+            } else {
+                assign.asal_perjalanan = 'Kabupaten Wonosobo';
+                assign.nominal_transport = this.tarifLuarKab;
+            }
+        },
+
+        addRuteTujuan(assign) {
+            if (!assign.rute_tujuan_ids) assign.rute_tujuan_ids = [];
+            assign.rute_tujuan_ids.push('');
+            this.$nextTick(() => { lucide.createIcons(); });
+        },
+
+        removeRuteTujuan(assign, idx) {
+            if (assign.rute_tujuan_ids.length > 1) {
+                assign.rute_tujuan_ids.splice(idx, 1);
+                this.recalculateTransport(assign);
+            }
+        },
+
+        recalculateTransport(assign) {
+            if (assign.jenis_perjalanan === 'luar_kab') {
+                assign.nominal_transport = this.tarifLuarKab;
+                return;
+            }
+
+            let prevId = assign.asal_kec_id || this.defaultWonosoboId;
+            let rawSum = 0;
+            let parts = [];
+
+            const targets = (assign.rute_tujuan_ids || []).filter(id => id !== '' && id !== null);
+            if (targets.length === 0) {
+                assign.rute_summary = 'Pilih kecamatan tujuan';
+                assign.rute_raw_total = 0;
+                return;
+            }
+
+            targets.forEach(nextId => {
+                const tarif = Number(this.transportMatrix?.[prevId]?.[nextId] ?? 0);
+                rawSum += tarif;
+                const fromName = this.kecamatanNamesMap[prevId] || 'Asal';
+                const toName = this.kecamatanNamesMap[nextId] || 'Tujuan';
+                parts.push(`${fromName} -> ${toName} (Rp ${new Intl.NumberFormat('id-ID').format(tarif)})`);
+                prevId = nextId;
+            });
+
+            assign.rute_raw_total = rawSum;
+            assign.rute_summary = parts.join(' + ');
+            assign.nominal_transport = Math.min(rawSum, this.maksDalamKab);
         },
 
         removeWilayahItem(assign, idx) {
@@ -1156,17 +1614,10 @@ function penugasanWizard() {
         },
 
         isAssignmentComplete(assign) {
-            // Syarat lengkap:
-            // 1. Target volume > 0
             if (!assign.target_volume || assign.target_volume <= 0) return false;
-
-            // 2. Wilayah tugas harus terisi minimal 1 yang tidak kosong (karena defaultnya merah)
             const filledWilayah = this.getCleanedWilayah(assign);
             if (filledWilayah.length === 0) return false;
-
-            // 3. Jika alokasi transport dicentang, tanggal transport harus diisi
-            if (assign.dapat_transport && (!assign.tgl_tugas_transport || assign.tgl_tugas_transport.trim() === '')) return false;
-
+            if (assign.dapat_transport && (!assign.jumlah_hari_transport || assign.jumlah_hari_transport < 1)) return false;
             return true;
         },
 
@@ -1174,7 +1625,7 @@ function penugasanWizard() {
             const filledWilayah = this.getCleanedWilayah(assign);
             if (filledWilayah.length === 0) return 'Wilayah belum diisi';
             if (!assign.target_volume || assign.target_volume <= 0) return 'Target beban kosong';
-            if (assign.dapat_transport && (!assign.tgl_tugas_transport || assign.tgl_tugas_transport.trim() === '')) return 'Tgl transport belum diisi';
+            if (assign.dapat_transport && (!assign.jumlah_hari_transport || assign.jumlah_hari_transport < 1)) return 'Jumlah hari translok kosong';
             return 'Belum Lengkap';
         },
 
@@ -1206,6 +1657,96 @@ function penugasanWizard() {
             this.assignments.forEach(a => {
                 a.pengawas_id = pId;
             });
+            this.$nextTick(() => { lucide.createIcons(); });
+        },
+
+        filterPengawas(query) {
+            const kw = (query || '').trim().toLowerCase();
+            let list = this.pengawasCandidatesList || [];
+            if (kw !== '') {
+                list = list.filter(p =>
+                    (p.name && p.name.toLowerCase().includes(kw)) ||
+                    (p.kecamatan_nama && p.kecamatan_nama.toLowerCase().includes(kw)) ||
+                    (p.tipe && p.tipe.toLowerCase().includes(kw))
+                );
+            }
+            return list.slice(0, 25);
+        },
+
+        getPengawasById(id) {
+            if (!id) return null;
+            return (this.pengawasCandidatesList || []).find(p => String(p.id) === String(id)) || null;
+        },
+
+        applyBulkPengawasHonor() {
+            const h = Number(this.bulkPengawasHonor) || 0;
+            this.pengawasAssignments.forEach(p => {
+                p.honor_per_satuan = h;
+            });
+        },
+
+        proceedToStep5() {
+            // Kumpulkan pengawas unik yang dipilih pada Langkah 4
+            const grouped = new Map();
+            this.assignments.forEach(a => {
+                if (!a.pengawas_id) return;
+                const pid = String(a.pengawas_id);
+                if (!grouped.has(pid)) {
+                    grouped.set(pid, {
+                        petugasNames: [],
+                        wilayahs: [],
+                    });
+                }
+                const g = grouped.get(pid);
+                if (a.petugas?.name) g.petugasNames.push(a.petugas.name);
+                this.getCleanedWilayah(a).forEach(w => g.wilayahs.push(w));
+            });
+
+            const existingMap = new Map(this.pengawasAssignments.map(pa => [String(pa.user_id), pa]));
+            const nextList = [];
+
+            grouped.forEach((info, pid) => {
+                const candidate = this.pengawasCandidatesList.find(c => String(c.id) === pid);
+                const uniqueWilayahs = Array.from(new Set(info.wilayahs)).join(', ');
+
+                if (existingMap.has(pid)) {
+                    const ex = existingMap.get(pid);
+                    ex.supervised_count = info.petugasNames.length;
+                    ex.supervised_names = info.petugasNames.join(', ');
+                    ex.wilayah_tugas = uniqueWilayahs;
+                    nextList.push(ex);
+                } else {
+                    nextList.push({
+                        user_id: pid,
+                        name: candidate ? candidate.name : ('Pengawas #' + pid),
+                        tipe: candidate ? candidate.tipe : 'organik',
+                        kecamatan_id: candidate ? (candidate.kecamatan_id || '') : '',
+                        supervised_count: info.petugasNames.length,
+                        supervised_names: info.petugasNames.join(', '),
+                        wilayah_tugas: uniqueWilayahs,
+                        target_volume: info.petugasNames.length || 1,
+                        satuan_volume: 'Petugas',
+                        estimasi_jam_per_satuan: this.defaultEstimasiJam,
+                        honor_per_satuan: this.defaultHonorSatuan,
+                        deadline_tugas: this.defaultDeadline,
+                        dapat_transport: false,
+                        jumlah_hari_transport: 1,
+                        jenis_perjalanan: 'dalam_kab',
+                        asal_kec_id: this.defaultWonosoboId,
+                        asal_perjalanan: 'Kecamatan Wonosobo',
+                        tujuan_luar_kab: '',
+                        rute_tujuan_ids: [candidate && candidate.kecamatan_id ? String(candidate.kecamatan_id) : ''],
+                        rute_summary: '',
+                        rute_raw_total: 0,
+                        tgl_tugas_transport: '',
+                        nominal_transport: 150000,
+                    });
+                }
+            });
+
+            this.pengawasAssignments = nextList;
+            this.step = 5;
+            this.$nextTick(() => { lucide.createIcons(); });
         },
 
         skipPengawas() {

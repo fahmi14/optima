@@ -104,6 +104,20 @@ class KegiatanController extends Controller
         return back()->with('success', 'Master Kegiatan berhasil dibuat.');
     }
 
+    public function updateMaster(Request $request, MasterKegiatan $master): RedirectResponse
+    {
+        $data = $request->validate([
+            'tim_kerja_id' => ['required', 'exists:tim_kerjas,id'],
+            'nama' => ['required', 'string', 'max:255'],
+            'tahun' => ['required', 'integer', 'min:2020', 'max:2099'],
+            'deskripsi' => ['nullable', 'string'],
+        ]);
+
+        $master->update($data);
+
+        return back()->with('success', 'Master Kegiatan berhasil diperbarui.');
+    }
+
     public function destroyMaster(MasterKegiatan $master): RedirectResponse
     {
         $master->delete();
@@ -118,11 +132,30 @@ class KegiatanController extends Controller
             'tgl_mulai' => ['required', 'date'],
             'tgl_selesai' => ['required', 'date', 'after_or_equal:tgl_mulai'],
             'pagu_transport' => ['required', 'numeric', 'min:0'],
+            'pagu_honor' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $data['pagu_honor'] = $data['pagu_honor'] ?? 0;
 
         $master->periodes()->create($data);
 
         return back()->with('success', 'Periode Kegiatan berhasil ditambahkan.');
+    }
+
+    public function updatePeriode(Request $request, PeriodeKegiatan $periode): RedirectResponse
+    {
+        $data = $request->validate([
+            'nama_periode' => ['required', 'string', 'max:255'],
+            'tgl_mulai' => ['required', 'date'],
+            'tgl_selesai' => ['required', 'date', 'after_or_equal:tgl_mulai'],
+            'pagu_transport' => ['required', 'numeric', 'min:0'],
+            'pagu_honor' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $data['pagu_honor'] = $data['pagu_honor'] ?? 0;
+        $periode->update($data);
+
+        return back()->with('success', 'Periode Kegiatan berhasil diperbarui.');
     }
 
     public function destroyPeriode(PeriodeKegiatan $periode): RedirectResponse
@@ -138,6 +171,7 @@ class KegiatanController extends Controller
             'masterKegiatan.timKerja',
             'masterKegiatan.periodes',
             'subKegiatans.penugasans.user',
+            'subKegiatans.penugasans.pengawas',
             'subKegiatans.penugasans.kecamatan',
             'subKegiatans.penugasans.alokasiTransports',
         ]);
@@ -171,7 +205,9 @@ class KegiatanController extends Controller
     {
         $data = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
+            'no_surat_tugas' => ['nullable', 'string', 'max:100'],
             'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
+            'level_wilayah' => ['nullable', 'in:kecamatan,desa,sls,sub_sls,nks'],
             'deadline_tahapan' => ['nullable', 'date'],
             'estimasi_jam_per_satuan' => ['nullable', 'numeric', 'min:0.1'],
             'honor_per_satuan' => ['nullable', 'numeric', 'min:0'],
@@ -190,7 +226,9 @@ class KegiatanController extends Controller
     {
         $data = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
+            'no_surat_tugas' => ['nullable', 'string', 'max:100'],
             'jenis_tahapan' => ['required', 'in:Teknis,Lapangan,Administrasi'],
+            'level_wilayah' => ['nullable', 'in:kecamatan,desa,sls,sub_sls,nks'],
             'deadline_tahapan' => ['nullable', 'date'],
             'estimasi_jam_per_satuan' => ['nullable', 'numeric', 'min:0.1'],
             'honor_per_satuan' => ['nullable', 'numeric', 'min:0'],

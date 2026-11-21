@@ -15,6 +15,12 @@ class AlokasiTransport extends Model
         'periode_kegiatan_id',
         'user_id',
         'kecamatan_id',
+        'hari_ke',
+        'jenis_perjalanan',
+        'asal_perjalanan',
+        'tujuan_luar_kab',
+        'rute_kecamatan_ids',
+        'tujuan_terisi',
         'tgl_tugas',
         'nominal',
         'status_spj',
@@ -26,6 +32,9 @@ class AlokasiTransport extends Model
         return [
             'tgl_tugas' => 'date',
             'nominal' => 'decimal:2',
+            'hari_ke' => 'integer',
+            'rute_kecamatan_ids' => 'array',
+            'tujuan_terisi' => 'boolean',
         ];
     }
 

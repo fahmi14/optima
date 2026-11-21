@@ -9,6 +9,8 @@ use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\KecamatanController;
 use App\Http\Controllers\MasterWilayahController;
 use App\Http\Controllers\KegiatanController;
+use App\Http\Controllers\MasterTransportController;
+use App\Http\Controllers\MatriksAlokasiController;
 use App\Http\Controllers\MitraController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PengaturanController;
@@ -38,6 +40,9 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard Utama / Eksekutif
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/beban-organik-data', [DashboardController::class, 'bebanOrganikData'])->name('dashboard.beban_organik_data');
+    Route::get('/dashboard/beban-mitra-data', [DashboardController::class, 'bebanMitraData'])->name('dashboard.beban_mitra_data');
+    Route::get('/dashboard/alokasi-honor-data', [DashboardController::class, 'alokasiHonorData'])->name('dashboard.alokasi_honor_data');
 
     // Kalender Pekerjaan
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender.index');
@@ -53,6 +58,7 @@ Route::middleware('auth')->group(function () {
     // Tugas Saya (Pegawai Organik & Mitra Statistik, juga tersedia untuk semua user)
     Route::get('/tugas-saya', [TugasSayaController::class, 'index'])->name('tugas-saya.index');
     Route::post('/tugas-saya/{penugasan}/progress', [TugasSayaController::class, 'updateProgress'])->name('tugas-saya.progress');
+    Route::post('/tugas-saya/translok/{alokasi}', [TugasSayaController::class, 'updateTranslok'])->name('tugas-saya.translok.update');
 
     // Master Data (Khusus Admin IPDS)
     Route::middleware('role:admin')->group(function () {
@@ -95,18 +101,29 @@ Route::middleware('auth')->group(function () {
         // Pengaturan SBML & Jam Kerja
         Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
         Route::put('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
+
+        // Master Transport (Tarif Per Kecamatan, Luar Kab & Batas Maksimal)
+        Route::get('/master/transport', [MasterTransportController::class, 'index'])->name('master.transport.index');
+        Route::post('/master/transport', [MasterTransportController::class, 'store'])->name('master.transport.store');
+        Route::put('/master/transport/{masterTransport}', [MasterTransportController::class, 'update'])->name('master.transport.update');
+        Route::delete('/master/transport/{masterTransport}', [MasterTransportController::class, 'destroy'])->name('master.transport.destroy');
+        Route::put('/master/transport-settings', [MasterTransportController::class, 'updateSettings'])->name('master.transport.settings');
+        Route::get('/master/transport/template', [MasterTransportController::class, 'downloadTemplate'])->name('master.transport.template');
+        Route::post('/master/transport/import', [MasterTransportController::class, 'import'])->name('master.transport.import');
     });
 
     // Kegiatan & Penugasan (Admin & Ketua Tim)
     Route::middleware('role:admin,katim')->group(function () {
         Route::get('/kegiatan', [KegiatanController::class, 'index'])->name('kegiatan.index');
         Route::post('/kegiatan/master', [KegiatanController::class, 'storeMaster'])->name('kegiatan.master.store');
+        Route::put('/kegiatan/master/{master}', [KegiatanController::class, 'updateMaster'])->name('kegiatan.master.update');
         Route::delete('/kegiatan/master/{master}', [KegiatanController::class, 'destroyMaster'])->name('kegiatan.master.destroy');
         Route::get('/kegiatan/template', [KegiatanController::class, 'downloadTemplate'])->name('kegiatan.template');
         Route::post('/kegiatan/import', [KegiatanController::class, 'import'])->name('kegiatan.import');
 
         Route::post('/kegiatan/{master}/periode', [KegiatanController::class, 'storePeriode'])->name('kegiatan.periode.store');
         Route::get('/periode/{periode}', [KegiatanController::class, 'showPeriode'])->name('kegiatan.periode.show');
+        Route::put('/periode/{periode}', [KegiatanController::class, 'updatePeriode'])->name('kegiatan.periode.update');
         Route::delete('/periode/{periode}', [KegiatanController::class, 'destroyPeriode'])->name('kegiatan.periode.destroy');
 
         Route::post('/periode/{periode}/sub', [KegiatanController::class, 'storeSubKegiatan'])->name('kegiatan.sub.store');
@@ -132,6 +149,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,katim,keuangan')->group(function () {
         Route::get('/transport', [TransportController::class, 'index'])->name('transport.index');
         Route::get('/transport/export', [TransportController::class, 'export'])->name('transport.export');
+    });
+
+    // Matriks Alokasi Petugas (Admin, Katim, Keuangan, Pimpinan)
+    Route::middleware('role:admin,katim,keuangan,pimpinan')->group(function () {
+        Route::get('/matriks-alokasi', [MatriksAlokasiController::class, 'index'])->name('matriks.alokasi.index');
     });
 
     Route::middleware('role:admin,keuangan')->group(function () {

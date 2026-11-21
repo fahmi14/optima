@@ -81,12 +81,18 @@ class WorkloadService
             return $satuanHonor * (int) $t->target_volume;
         });
 
+        $totalTranslok = (float) $user->alokasiTransports()
+            ->where('status_spj', '!=', 'Ditolak')
+            ->whereBetween('tgl_tugas', [$startOfMonth->format('Y-m-d'), $endOfMonth->format('Y-m-d')])
+            ->sum('nominal');
+
         $hariKerja = $this->getHariKerjaBulan($month);
         $kuotaJam = $this->getTotalJamKerjaBulan($month);
         $sbml = $this->getSbmlMitra();
 
         $persentaseJam = $kuotaJam > 0 ? round(($totalJam / $kuotaJam) * 100, 1) : 0;
         $persentaseHonor = $sbml > 0 ? round(($totalHonor / $sbml) * 100, 1) : 0;
+        $persentaseTranslok = $sbml > 0 ? round(($totalTranslok / $sbml) * 100, 1) : 0;
 
         $isJamAman = $totalJam <= $kuotaJam;
         $isHonorAman = ($user->tipe === 'mitra') ? ($totalHonor <= $sbml) : true;
@@ -137,8 +143,10 @@ class WorkloadService
             'is_jam_aman' => $isJamAman,
 
             'total_honor' => $totalHonor,
+            'total_translok' => $totalTranslok,
             'sbml' => $sbml,
             'persentase_honor' => $persentaseHonor,
+            'persentase_translok' => $persentaseTranslok,
             'is_honor_aman' => $isHonorAman,
 
             'kapasitas_maks' => (int) $kuotaJam,

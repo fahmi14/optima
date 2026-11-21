@@ -82,7 +82,9 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($alokasis as $item)
                         <tr class="hover:bg-slate-50/50">
-                            <td class="py-3 px-4 font-semibold text-slate-800">{{ $item->tgl_tugas->format('d M Y') }}</td>
+                            <td class="py-3 px-4 font-semibold text-slate-800">
+                                {{ $item->tgl_tugas ? $item->tgl_tugas->format('d M Y') : 'Hari ke-' . ($item->hari_ke ?? 1) . ' (Belum diisi)' }}
+                            </td>
                             <td class="py-3 px-4">
                                 <p class="font-semibold text-slate-800">{{ $item->user?->name }}</p>
                                 <p class="text-[11px] text-slate-400">{{ ucfirst($item->user?->tipe) }} &middot; {{ $item->user?->nip ?: $item->user?->id_sobat }}</p>

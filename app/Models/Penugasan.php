@@ -16,6 +16,11 @@ class Penugasan extends Model
         'user_id',
         'pengawas_id',
         'kecamatan_id',
+        'jenis_perjalanan',
+        'asal_perjalanan',
+        'tujuan_luar_kab',
+        'rute_transport',
+        'jumlah_hari_transport',
         'level_wilayah',
         'wilayah_tugas',
         'target_volume',
@@ -47,6 +52,7 @@ class Penugasan extends Model
             'deadline_tugas' => 'date',
             'verified_at' => 'datetime',
             'wilayah_tugas' => 'array',
+            'rute_transport' => 'array',
         ];
     }
 

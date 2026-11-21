@@ -56,6 +56,7 @@
             border-radius: 1.25rem;
         }
     </style>
+    @stack('styles')
 </head>
 <body class="h-full flex overflow-hidden bg-[#F8FAFC] text-slate-700 antialiased" x-data="{ sidebarOpen: false }">
 
@@ -117,6 +118,11 @@
                         <i data-lucide="receipt" class="w-4 h-4 {{ request()->routeIs('transport.*') ? 'text-white' : 'text-slate-400' }}"></i>
                         <span>Transport &amp; SPJ</span>
                     </a>
+
+                    <a href="{{ route('matriks.alokasi.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('matriks.alokasi.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="grid-3x3" class="w-4 h-4 {{ request()->routeIs('matriks.alokasi.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>Matriks Alokasi Petugas</span>
+                    </a>
                 </div>
             </div>
             @endif
@@ -140,6 +146,10 @@
                     <a href="{{ route('master.wilayah.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('master.wilayah.*') || request()->routeIs('kecamatan.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
                         <i data-lucide="map" class="w-4 h-4 {{ request()->routeIs('master.wilayah.*') || request()->routeIs('kecamatan.*') ? 'text-white' : 'text-slate-400' }}"></i>
                         <span>Master Wilayah</span>
+                    </a>
+                    <a href="{{ route('master.transport.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('master.transport.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+                        <i data-lucide="car" class="w-4 h-4 {{ request()->routeIs('master.transport.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                        <span>Master Transport</span>
                     </a>
                     <a href="{{ route('pengaturan.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all {{ request()->routeIs('pengaturan.*') ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
                         <i data-lucide="settings" class="w-4 h-4 {{ request()->routeIs('pengaturan.*') ? 'text-white' : 'text-slate-400' }}"></i>
@@ -269,5 +279,6 @@
             lucide.createIcons();
         });
     </script>
+    @stack('scripts')
 </body>
 </html>

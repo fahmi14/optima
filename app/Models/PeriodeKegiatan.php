@@ -17,6 +17,7 @@ class PeriodeKegiatan extends Model
         'tgl_mulai',
         'tgl_selesai',
         'pagu_transport',
+        'pagu_honor',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class PeriodeKegiatan extends Model
             'tgl_mulai' => 'date',
             'tgl_selesai' => 'date',
             'pagu_transport' => 'decimal:2',
+            'pagu_honor' => 'decimal:2',
         ];
     }
 

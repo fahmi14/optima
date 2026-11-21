@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\AlokasiKepka;
 use App\Models\Kecamatan;
 use App\Models\MasterKegiatan;
+use App\Models\MasterMitra;
 use App\Models\MitraKepka;
 use App\Models\Penugasan;
 use App\Models\PeriodeKegiatan;
@@ -221,35 +223,41 @@ class ExcelImportExportService
 
                 $umurRaw = trim((string) ($row['umur'] ?? ''));
 
-                MitraKepka::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'tahun' => $tahun,
-                    ],
-                    [
-                        'nama_lengkap' => $nama,
-                        'posisi' => trim((string) ($row['posisi'] ?? '')) ?: null,
-                        'status_seleksi' => trim((string) ($row['status seleksi'] ?? '')) ?: null,
-                        'alamat_detail' => trim((string) ($row['alamat detail'] ?? '')) ?: null,
-                        'alamat_provinsi' => trim((string) ($row['alamat provinsi'] ?? '')) ?: null,
-                        'alamat_kab' => trim((string) ($row['alamat kab/kota'] ?? '')) ?: null,
-                        'alamat_kecamatan' => $kecRaw !== '' ? $kecRaw : null,
-                        'alamat_desa' => trim((string) ($row['alamat desa/kel'] ?? '')) ?: null,
-                        'ttl' => trim((string) ($row['tempat, tanggal lahir'] ?? '')) ?: null,
-                        'umur' => is_numeric($umurRaw) ? (int) $umurRaw : null,
-                        'jenis_kelamin' => trim((string) ($row['jenis kelamin'] ?? '')) ?: null,
-                        'status_kawin' => trim((string) ($row['status kawin'] ?? '')) ?: null,
-                        'pendidikan' => trim((string) ($row['pendidikan'] ?? '')) ?: null,
-                        'pekerjaan' => trim((string) ($row['pekerjaan'] ?? '')) ?: null,
-                        'deskripsi_pekerjaan_lain' => trim((string) ($row['deskripsi pekerjaan lain'] ?? '')) ?: null,
-                        'terikat_kldi' => trim((string) ($row['terikat kontrak kldi lain'] ?? '')) ?: null,
-                        'nama_kldi' => trim((string) ($row['nama kldi'] ?? '')) ?: null,
-                        'keterangan_kldi' => trim((string) ($row['keterangan kldi'] ?? '')) ?: null,
-                        'no_telp' => $noTelp !== '' ? $noTelp : null,
-                        'sobat_id' => $sobatId !== '' ? $sobatId : null,
-                        'email' => $emailRaw !== '' ? $emailRaw : $email,
-                    ]
-                );
+                $mitraPayload = [
+                    'user_id' => $user->id,
+                    'sobat_id' => $sobatId !== '' ? $sobatId : null,
+                    'nama_lengkap' => $nama,
+                    'posisi' => trim((string) ($row['posisi'] ?? '')) ?: null,
+                    'status_seleksi' => trim((string) ($row['status seleksi'] ?? '')) ?: null,
+                    'alamat_detail' => trim((string) ($row['alamat detail'] ?? '')) ?: null,
+                    'alamat_provinsi' => trim((string) ($row['alamat provinsi'] ?? '')) ?: null,
+                    'alamat_kab' => trim((string) ($row['alamat kab/kota'] ?? '')) ?: null,
+                    'alamat_kecamatan' => $kecRaw !== '' ? $kecRaw : null,
+                    'alamat_desa' => trim((string) ($row['alamat desa/kel'] ?? '')) ?: null,
+                    'ttl' => trim((string) ($row['tempat, tanggal lahir'] ?? '')) ?: null,
+                    'umur' => is_numeric($umurRaw) ? (int) $umurRaw : null,
+                    'jenis_kelamin' => trim((string) ($row['jenis kelamin'] ?? '')) ?: null,
+                    'status_kawin' => trim((string) ($row['status kawin'] ?? '')) ?: null,
+                    'pendidikan' => trim((string) ($row['pendidikan'] ?? '')) ?: null,
+                    'pekerjaan' => trim((string) ($row['pekerjaan'] ?? '')) ?: null,
+                    'deskripsi_pekerjaan_lain' => trim((string) ($row['deskripsi pekerjaan lain'] ?? '')) ?: null,
+                    'terikat_kldi' => trim((string) ($row['terikat kontrak kldi lain'] ?? '')) ?: null,
+                    'nama_kldi' => trim((string) ($row['nama kldi'] ?? '')) ?: null,
+                    'keterangan_kldi' => trim((string) ($row['keterangan kldi'] ?? '')) ?: null,
+                    'no_telp' => $noTelp !== '' ? $noTelp : null,
+                    'email' => $emailRaw !== '' ? $emailRaw : $email,
+                ];
+
+                // Normalisasi: jika sobat_id sama, cukup update/pakai 1 record di master_mitras
+                $masterMitra = $sobatId !== ''
+                    ? MasterMitra::updateOrCreate(['sobat_id' => $sobatId], $mitraPayload)
+                    : MasterMitra::updateOrCreate(['user_id' => $user->id], $mitraPayload);
+
+                // Hubungkan ke alokasi_kepkas (id_mitra & tahun) tanpa duplikasi
+                AlokasiKepka::firstOrCreate([
+                    'id_mitra' => $masterMitra->id,
+                    'tahun' => $tahun,
+                ]);
 
                 $success++;
             } catch (Throwable $e) {

@@ -14,6 +14,7 @@ class SubKegiatan extends Model
     protected $fillable = [
         'periode_kegiatan_id',
         'nama',
+        'no_surat_tugas',
         'jenis_tahapan',
         'level_wilayah',
         'ada_pengawas',

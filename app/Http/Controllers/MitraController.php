@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AlokasiKepka;
 use App\Models\Kecamatan;
-use App\Models\MitraKepka;
+use App\Models\MasterMitra;
 use App\Models\User;
 use App\Services\ExcelImportExportService;
 use App\Services\WorkloadService;
@@ -23,18 +24,18 @@ class MitraController extends Controller
 
     public function index(Request $request): View
     {
-        $tahunList = MitraKepka::select('tahun')->distinct()->orderByDesc('tahun')->pluck('tahun');
+        $tahunList = AlokasiKepka::select('tahun')->distinct()->orderByDesc('tahun')->pluck('tahun');
         $selectedTahun = $request->filled('tahun')
             ? (int) $request->tahun
             : ($tahunList->first() ?? (int) date('Y'));
 
-        $query = MitraKepka::with(['user.kecamatan', 'user.penugasans' => function ($q) {
+        $query = AlokasiKepka::with(['masterMitra.user.kecamatan', 'masterMitra.user.penugasans' => function ($q) {
             $q->where('status', '!=', 'Selesai');
         }])->where('tahun', $selectedTahun);
 
         if ($request->filled('kecamatan')) {
             $kecFilter = $request->kecamatan;
-            $query->where(function ($q) use ($kecFilter) {
+            $query->whereHas('masterMitra', function ($q) use ($kecFilter) {
                 $q->where('alamat_kecamatan', 'like', "%{$kecFilter}%")
                     ->orWhereHas('user.kecamatan', fn ($kq) => $kq->where('nama', $kecFilter));
             });
@@ -42,7 +43,7 @@ class MitraController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $query->whereHas('masterMitra', function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
                     ->orWhere('sobat_id', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -52,14 +53,36 @@ class MitraController extends Controller
             });
         }
 
-        $mitras = $query->orderBy('nama_lengkap')->paginate(20)->withQueryString();
+        $mitras = $query->join('master_mitras', 'alokasi_kepkas.id_mitra', '=', 'master_mitras.id')
+            ->select('alokasi_kepkas.*')
+            ->orderBy('master_mitras.nama_lengkap')
+            ->paginate(20)
+            ->withQueryString();
 
         $workloads = [];
-        foreach ($mitras as $m) {
-            if ($m->user) {
-                $workloads[$m->user_id] = $this->workloadService->calculateUserWorkload($m->user);
+        $mitras->getCollection()->transform(function (AlokasiKepka $alokasi) use (&$workloads) {
+            $mm = $alokasi->masterMitra;
+            $user = $mm?->user;
+
+            if ($user) {
+                $workloads[$user->id] = $this->workloadService->calculateUserWorkload($user);
             }
-        }
+
+            // Gabungkan atribut MasterMitra ke object AlokasiKepka agar view tetap konsisten
+            $alokasi->setAttribute('user_id', $mm?->user_id);
+            $alokasi->setRelation('user', $user);
+            foreach ([
+                'sobat_id', 'nama_lengkap', 'posisi', 'status_seleksi', 'alamat_detail',
+                'alamat_provinsi', 'alamat_kab', 'alamat_kecamatan', 'alamat_desa',
+                'ttl', 'umur', 'jenis_kelamin', 'status_kawin', 'pendidikan',
+                'pekerjaan', 'deskripsi_pekerjaan_lain', 'terikat_kldi',
+                'nama_kldi', 'keterangan_kldi', 'no_telp', 'email',
+            ] as $field) {
+                $alokasi->setAttribute($field, $mm?->{$field});
+            }
+
+            return $alokasi;
+        });
 
         $kecamatans = Kecamatan::orderBy('nama')->get();
 
@@ -98,51 +121,68 @@ class MitraController extends Controller
         $kec = !empty($data['kecamatan_id']) ? Kecamatan::find($data['kecamatan_id']) : null;
 
         DB::transaction(function () use ($data, $kec) {
-            $user = User::firstOrNew(['email' => $data['email']]);
-            if (!$user->exists) {
+            $sobatId = trim((string) ($data['sobat_id'] ?? ''));
+            $user = $sobatId !== ''
+                ? User::where('id_sobat', $sobatId)->orWhere('email', $data['email'])->first()
+                : User::where('email', $data['email'])->first();
+
+            if (!$user) {
+                $user = new User(['email' => $data['email']]);
                 $user->password = Hash::make('bps3307');
                 $user->role = 'mitra';
                 $user->tipe = 'mitra';
             }
+
             $user->name = $data['nama_lengkap'];
-            $user->id_sobat = $data['sobat_id'] ?? $user->id_sobat;
+            $user->id_sobat = $sobatId !== '' ? $sobatId : $user->id_sobat;
             $user->no_hp = $data['no_telp'] ?? $user->no_hp;
             $user->alamat = $data['alamat_detail'] ?? $user->alamat;
             $user->kecamatan_id = $kec?->id ?? $user->kecamatan_id;
             $user->kapasitas_maks = $data['kapasitas_maks'] ?? 100;
             $user->save();
 
-            MitraKepka::updateOrCreate(
-                ['user_id' => $user->id, 'tahun' => $data['tahun']],
-                [
-                    'nama_lengkap' => $data['nama_lengkap'],
-                    'alamat_detail' => $data['alamat_detail'] ?? null,
-                    'alamat_provinsi' => '(33) JAWA TENGAH',
-                    'alamat_kab' => '(07) WONOSOBO',
-                    'alamat_kecamatan' => $kec?->nama,
-                    'alamat_desa' => $data['alamat_desa'] ?? null,
-                    'ttl' => $data['ttl'] ?? null,
-                    'umur' => $data['umur'] ?? null,
-                    'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
-                    'status_kawin' => $data['status_kawin'] ?? null,
-                    'pendidikan' => $data['pendidikan'] ?? null,
-                    'pekerjaan' => $data['pekerjaan'] ?? null,
-                    'terikat_kldi' => $data['terikat_kldi'] ?? null,
-                    'nama_kldi' => $data['nama_kldi'] ?? null,
-                    'keterangan_kldi' => $data['keterangan_kldi'] ?? null,
-                    'no_telp' => $data['no_telp'] ?? null,
-                    'sobat_id' => $data['sobat_id'] ?? null,
-                    'email' => $data['email'],
-                ]
-            );
+            $mitraPayload = [
+                'user_id' => $user->id,
+                'sobat_id' => $sobatId !== '' ? $sobatId : null,
+                'nama_lengkap' => $data['nama_lengkap'],
+                'alamat_detail' => $data['alamat_detail'] ?? null,
+                'alamat_provinsi' => '(33) JAWA TENGAH',
+                'alamat_kab' => '(07) WONOSOBO',
+                'alamat_kecamatan' => $kec?->nama,
+                'alamat_desa' => $data['alamat_desa'] ?? null,
+                'ttl' => $data['ttl'] ?? null,
+                'umur' => $data['umur'] ?? null,
+                'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
+                'status_kawin' => $data['status_kawin'] ?? null,
+                'pendidikan' => $data['pendidikan'] ?? null,
+                'pekerjaan' => $data['pekerjaan'] ?? null,
+                'terikat_kldi' => $data['terikat_kldi'] ?? null,
+                'nama_kldi' => $data['nama_kldi'] ?? null,
+                'keterangan_kldi' => $data['keterangan_kldi'] ?? null,
+                'no_telp' => $data['no_telp'] ?? null,
+                'email' => $data['email'],
+            ];
+
+            // Jika sobat_id sama, cukup pakai 1 record master_mitras
+            $masterMitra = $sobatId !== ''
+                ? MasterMitra::updateOrCreate(['sobat_id' => $sobatId], $mitraPayload)
+                : MasterMitra::updateOrCreate(['user_id' => $user->id], $mitraPayload);
+
+            AlokasiKepka::firstOrCreate([
+                'id_mitra' => $masterMitra->id,
+                'tahun' => $data['tahun'],
+            ]);
         });
 
         return redirect()->route('mitra.index', ['tahun' => $data['tahun']])
             ->with('success', 'Data Mitra KEPKA berhasil disimpan.');
     }
 
-    public function update(Request $request, MitraKepka $mitra): RedirectResponse
+    public function update(Request $request, int $id): RedirectResponse
     {
+        $alokasi = AlokasiKepka::with('masterMitra.user')->findOrFail($id);
+        $masterMitra = $alokasi->masterMitra;
+
         $data = $request->validate([
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'sobat_id' => ['nullable', 'string', 'max:50'],
@@ -159,40 +199,42 @@ class MitraController extends Controller
 
         $kec = !empty($data['kecamatan_id']) ? Kecamatan::find($data['kecamatan_id']) : null;
 
-        DB::transaction(function () use ($mitra, $data, $kec) {
-            $mitra->update([
-                'nama_lengkap' => $data['nama_lengkap'],
-                'sobat_id' => $data['sobat_id'] ?? $mitra->sobat_id,
-                'email' => $data['email'] ?? $mitra->email,
-                'no_telp' => $data['no_telp'] ?? $mitra->no_telp,
-                'alamat_kecamatan' => $kec?->nama ?? $mitra->alamat_kecamatan,
-                'alamat_detail' => $data['alamat_detail'] ?? $mitra->alamat_detail,
-                'pekerjaan' => $data['pekerjaan'] ?? $mitra->pekerjaan,
-                'pendidikan' => $data['pendidikan'] ?? $mitra->pendidikan,
-                'terikat_kldi' => $data['terikat_kldi'] ?? $mitra->terikat_kldi,
-                'nama_kldi' => $data['nama_kldi'] ?? $mitra->nama_kldi,
-            ]);
-
-            if ($mitra->user) {
-                $mitra->user->update([
-                    'name' => $data['nama_lengkap'],
-                    'id_sobat' => $data['sobat_id'] ?? $mitra->user->id_sobat,
-                    'no_hp' => $data['no_telp'] ?? $mitra->user->no_hp,
-                    'alamat' => $data['alamat_detail'] ?? $mitra->user->alamat,
-                    'kecamatan_id' => $kec?->id ?? $mitra->user->kecamatan_id,
-                    'kapasitas_maks' => $data['kapasitas_maks'] ?? $mitra->user->kapasitas_maks,
+        DB::transaction(function () use ($masterMitra, $data, $kec) {
+            if ($masterMitra) {
+                $masterMitra->update([
+                    'nama_lengkap' => $data['nama_lengkap'],
+                    'sobat_id' => $data['sobat_id'] ?? $masterMitra->sobat_id,
+                    'email' => $data['email'] ?? $masterMitra->email,
+                    'no_telp' => $data['no_telp'] ?? $masterMitra->no_telp,
+                    'alamat_kecamatan' => $kec?->nama ?? $masterMitra->alamat_kecamatan,
+                    'alamat_detail' => $data['alamat_detail'] ?? $masterMitra->alamat_detail,
+                    'pekerjaan' => $data['pekerjaan'] ?? $masterMitra->pekerjaan,
+                    'pendidikan' => $data['pendidikan'] ?? $masterMitra->pendidikan,
+                    'terikat_kldi' => $data['terikat_kldi'] ?? $masterMitra->terikat_kldi,
+                    'nama_kldi' => $data['nama_kldi'] ?? $masterMitra->nama_kldi,
                 ]);
+
+                if ($masterMitra->user) {
+                    $masterMitra->user->update([
+                        'name' => $data['nama_lengkap'],
+                        'id_sobat' => $data['sobat_id'] ?? $masterMitra->user->id_sobat,
+                        'no_hp' => $data['no_telp'] ?? $masterMitra->user->no_hp,
+                        'alamat' => $data['alamat_detail'] ?? $masterMitra->user->alamat,
+                        'kecamatan_id' => $kec?->id ?? $masterMitra->user->kecamatan_id,
+                        'kapasitas_maks' => $data['kapasitas_maks'] ?? $masterMitra->user->kapasitas_maks,
+                    ]);
+                }
             }
         });
 
         return back()->with('success', 'Data Mitra KEPKA berhasil diperbarui.');
     }
 
-    public function destroy(MitraKepka $mitra): RedirectResponse
+    public function destroy(int $id): RedirectResponse
     {
-        $mitra->delete();
+        AlokasiKepka::findOrFail($id)->delete();
 
-        return back()->with('success', 'Data Mitra KEPKA tahun tersebut berhasil dihapus.');
+        return back()->with('success', 'Mitra berhasil dihapus dari alokasi KEPKA tahun tersebut.');
     }
 
     public function downloadTemplate(): StreamedResponse
