@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Desa;
 use App\Models\Kecamatan;
 use App\Models\MasterTransport;
+use App\Models\Nks;
 use App\Models\Pengaturan;
 use App\Models\Penugasan;
+use App\Models\Sls;
 use App\Models\SubKegiatan;
+use App\Models\SubSls;
 use App\Models\User;
 use App\Services\ExcelImportExportService;
 use App\Services\TransportValidationService;
@@ -428,5 +432,252 @@ class PenugasanWizardController extends Controller
     public function downloadTemplate(): StreamedResponse
     {
         return $this->excelService->downloadTemplatePenugasan();
+    }
+
+    /**
+     * Download template Alokasi Wilayah berisi email, nama (sesuai petugas terpilih), dan id_wilayah (kosong)
+     * + Sheet 2 berisi Referensi ID Wilayah sesuai level wilayah yang dipilih.
+     */
+    public function downloadAlokasiTemplate(Request $request, SubKegiatan $sub): StreamedResponse
+    {
+        $idsRaw = (string) $request->query('ids', '');
+        $ids = array_values(array_filter(array_map('intval', explode(',', $idsRaw))));
+        $level = $request->query('level', 'kecamatan');
+        if (!in_array($level, ['kecamatan', 'desa', 'sls', 'sub_sls', 'nks'], true)) {
+            $level = 'kecamatan';
+        }
+
+        $users = !empty($ids)
+            ? User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'email'])
+            : collect();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+        // Sheet 1: Alokasi Petugas
+        $sheet1 = $spreadsheet->getActiveSheet();
+        $sheet1->setTitle('Alokasi Petugas');
+        $headers1 = ['email', 'nama', 'id_wilayah'];
+        foreach ($headers1 as $colIdx => $h) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+            $sheet1->setCellValue("{$col}1", $h);
+            $sheet1->getColumnDimension($col)->setAutoSize(true);
+        }
+        $sheet1->getStyle('A1:C1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1E293B'],
+            ],
+        ]);
+
+        foreach ($users as $idx => $u) {
+            $row = $idx + 2;
+            $sheet1->setCellValue("A{$row}", $u->email);
+            $sheet1->setCellValue("B{$row}", $u->name);
+            $sheet1->setCellValue("C{$row}", '');
+        }
+
+        // Sheet 2: Referensi Wilayah sesuai level terpilih
+        $sheet2 = $spreadsheet->createSheet();
+        $sheet2->setTitle('Referensi Wilayah');
+        $headers2 = ['id_wilayah', 'kode', 'nama_wilayah', 'kecamatan', 'desa'];
+        foreach ($headers2 as $colIdx => $h) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1);
+            $sheet2->setCellValue("{$col}1", $h);
+            $sheet2->getColumnDimension($col)->setAutoSize(true);
+        }
+        $sheet2->getStyle('A1:E1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '312E81'],
+            ],
+        ]);
+
+        $refRows = [];
+        if ($level === 'kecamatan') {
+            foreach (Kecamatan::orderBy('kode')->get() as $k) {
+                $refRows[] = [$k->id, $k->kode, "Kec. {$k->nama}", $k->nama, '-'];
+            }
+        } elseif ($level === 'desa') {
+            foreach (Desa::with('kecamatan')->orderBy('id')->get() as $d) {
+                $refRows[] = [$d->id, $d->kd_desa ?? $d->id, $d->desa, $d->kecamatan?->nama ?? '-', $d->desa];
+            }
+        } elseif ($level === 'sls') {
+            foreach (Sls::with(['kecamatan', 'desa'])->orderBy('id')->get() as $s) {
+                $refRows[] = [$s->id, $s->id_sls ?? $s->id, $s->sls, $s->kecamatan?->nama ?? '-', $s->desa?->desa ?? '-'];
+            }
+        } elseif ($level === 'sub_sls') {
+            foreach (SubSls::with(['kecamatan', 'desa'])->orderBy('id')->get() as $ss) {
+                $refRows[] = [$ss->id, $ss->id_sls ?? $ss->id, $ss->subsls, $ss->kecamatan?->nama ?? '-', $ss->desa?->desa ?? '-'];
+            }
+        } elseif ($level === 'nks') {
+            foreach (Nks::with(['kecamatan', 'desa'])->orderBy('id')->get() as $n) {
+                $refRows[] = [$n->id, $n->nks, "NKS {$n->nks}" . ($n->sls ? " - {$n->sls}" : ''), $n->kecamatan?->nama ?? '-', $n->desa?->desa ?? '-'];
+            }
+        }
+
+        foreach ($refRows as $idx => $r) {
+            $row = $idx + 2;
+            $sheet2->setCellValue("A{$row}", $r[0]);
+            $sheet2->setCellValue("B{$row}", $r[1]);
+            $sheet2->setCellValue("C{$row}", $r[2]);
+            $sheet2->setCellValue("D{$row}", $r[3]);
+            $sheet2->setCellValue("E{$row}", $r[4]);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+        $filename = "template_alokasi_{$level}_sub{$sub->id}.xlsx";
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Import Excel Alokasi Wilayah (email, nama, id_wilayah) untuk Langkah 3 Wizard
+     */
+    public function importAlokasi(Request $request, SubKegiatan $sub): JsonResponse
+    {
+        $request->validate([
+            'level' => ['required', 'in:kecamatan,desa,sls,sub_sls,nks'],
+            'file' => ['required', 'file', 'mimes:xlsx,csv,xls', 'max:10240'],
+        ]);
+
+        $level = $request->input('level');
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('file')->getRealPath());
+        $raw = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+
+        if (count($raw) < 2) {
+            return response()->json([
+                'matched' => [],
+                'success_rows' => 0,
+                'errors' => ['File Excel kosong atau tidak memiliki data.'],
+            ]);
+        }
+
+        $headers = array_map(fn ($h) => mb_strtolower(trim((string) $h)), $raw[0]);
+        $matched = [];
+        $successRows = 0;
+        $errors = [];
+
+        for ($i = 1; $i < count($raw); $i++) {
+            $line = $raw[$i];
+            $nonEmpty = array_filter($line, fn ($v) => $v !== null && trim((string) $v) !== '');
+            if (empty($nonEmpty)) {
+                continue;
+            }
+
+            $rowNum = $i + 1;
+            $assoc = [];
+            foreach ($headers as $colIdx => $key) {
+                if ($key !== '') {
+                    $assoc[$key] = $line[$colIdx] ?? null;
+                }
+            }
+
+            $email = mb_strtolower(trim((string) ($assoc['email'] ?? '')));
+            $nama = trim((string) ($assoc['nama'] ?? ''));
+            $idWilayah = trim((string) ($assoc['id_wilayah'] ?? ''));
+
+            if ($email === '' && $nama === '') {
+                $errors[] = "Baris {$rowNum}: Email atau nama wajib diisi.";
+                continue;
+            }
+
+            if ($idWilayah === '') {
+                $errors[] = "Baris {$rowNum} ({$nama}): id_wilayah masih kosong.";
+                continue;
+            }
+
+            $user = $email !== '' ? User::where('email', $email)->first() : null;
+            if (!$user && $nama !== '') {
+                $user = User::where('name', $nama)->first();
+            }
+
+            if (!$user) {
+                $errors[] = "Baris {$rowNum}: Petugas '{$email}' / '{$nama}' tidak ditemukan.";
+                continue;
+            }
+
+            $wilayahValue = null;
+            $kecamatanId = null;
+
+            if ($level === 'kecamatan') {
+                $k = is_numeric($idWilayah)
+                    ? (Kecamatan::find((int) $idWilayah) ?? Kecamatan::where('kode', $idWilayah)->first())
+                    : Kecamatan::where('kode', $idWilayah)->orWhere('nama', $idWilayah)->first();
+                if ($k) {
+                    $wilayahValue = "Kec. {$k->nama}";
+                    $kecamatanId = $k->id;
+                }
+            } elseif ($level === 'desa') {
+                $d = Desa::with('kecamatan')->find((int) $idWilayah);
+                if ($d) {
+                    $kecNama = $d->kecamatan?->nama ?? '-';
+                    $wilayahValue = "{$d->desa} (Kec {$kecNama})";
+                    $kecamatanId = $d->id_kec;
+                }
+            } elseif ($level === 'sls') {
+                $s = Sls::with(['kecamatan', 'desa'])
+                    ->where('id', (int) $idWilayah)
+                    ->orWhere('id_sls', $idWilayah)
+                    ->first();
+                if ($s) {
+                    $kecNama = $s->kecamatan?->nama ?? '-';
+                    $desaNama = $s->desa?->desa ?? '-';
+                    $wilayahValue = "{$s->sls} (Kec {$kecNama}, Desa {$desaNama})";
+                    $kecamatanId = $s->id_kec;
+                }
+            } elseif ($level === 'sub_sls') {
+                $ss = SubSls::with(['kecamatan', 'desa'])
+                    ->where('id', (int) $idWilayah)
+                    ->orWhere('id_sls', $idWilayah)
+                    ->first();
+                if ($ss) {
+                    $kecNama = $ss->kecamatan?->nama ?? '-';
+                    $desaNama = $ss->desa?->desa ?? '-';
+                    $wilayahValue = "{$ss->subsls} (Kec {$kecNama}, Desa {$desaNama})";
+                    $kecamatanId = $ss->id_kec;
+                }
+            } elseif ($level === 'nks') {
+                $n = Nks::with(['kecamatan', 'desa'])
+                    ->where('id', (int) $idWilayah)
+                    ->orWhere('nks', $idWilayah)
+                    ->first();
+                if ($n) {
+                    $kecNama = $n->kecamatan?->nama ?? '-';
+                    $desaNama = $n->desa?->desa ?? '-';
+                    $slsText = $n->sls ? " - {$n->sls}" : '';
+                    $wilayahValue = "NKS {$n->nks}{$slsText} (Kec {$kecNama}, Desa {$desaNama})";
+                    $kecamatanId = $n->id_kec;
+                }
+            }
+
+            if (!$wilayahValue) {
+                $errors[] = "Baris {$rowNum} ({$user->name}): id_wilayah '{$idWilayah}' tidak ditemukan pada level {$level}.";
+                continue;
+            }
+
+            if (!isset($matched[$user->id])) {
+                $matched[$user->id] = [
+                    'kecamatan_id' => $kecamatanId,
+                    'wilayah_tugas' => [],
+                ];
+            }
+            if (!in_array($wilayahValue, $matched[$user->id]['wilayah_tugas'], true)) {
+                $matched[$user->id]['wilayah_tugas'][] = $wilayahValue;
+            }
+            $successRows++;
+        }
+
+        return response()->json([
+            'matched' => $matched,
+            'success_rows' => $successRows,
+            'errors' => $errors,
+        ]);
     }
 }

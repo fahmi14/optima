@@ -440,6 +440,56 @@
                     </div>
                 </div>
 
+                <!-- IMPORT ALOKASI EXCEL (TEMPLATE OTOMATIS BERISI PETUGAS TERPILIH) -->
+                <div class="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+                                <span>Import Alokasi Wilayah via Excel</span>
+                            </h4>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                Template otomatis terisi <strong>email</strong> &amp; <strong>nama</strong> petugas yang sudah dipilih, lengkap dengan sheet Referensi <strong>id_wilayah</strong> level <strong class="text-indigo-700" x-text="levelWilayahLabel(levelWilayah)"></strong>.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                @click="downloadAlokasiTemplate()"
+                                class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer"
+                            >
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                <span>Download Template (<span x-text="selectedPetugasIds.length"></span> Petugas)</span>
+                            </button>
+
+                            <input type="file" x-ref="alokasiFile" accept=".xlsx,.csv,.xls" class="text-[11px] bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 max-w-[210px]">
+
+                            <button
+                                type="button"
+                                @click="importAlokasiExcel()"
+                                :disabled="alokasiImporting"
+                                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-xl transition cursor-pointer"
+                            >
+                                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                <span x-text="alokasiImporting ? 'Memproses...' : 'Import Alokasi'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div x-show="alokasiImportResult" x-cloak class="p-3 rounded-xl border text-xs space-y-1" :class="alokasiImportResult?.errors?.length ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-emerald-50/80 border-emerald-200 text-emerald-900'">
+                        <p class="font-semibold">
+                            Alokasi diterapkan: <span x-text="alokasiImportResult?.success_rows || 0"></span> baris berhasil dipetakan ke petugas.
+                        </p>
+                        <template x-if="alokasiImportResult?.errors?.length">
+                            <ul class="list-disc pl-5 text-[11px] text-rose-700 space-y-0.5 max-h-28 overflow-y-auto">
+                                <template x-for="(err, eIdx) in alokasiImportResult.errors" :key="eIdx">
+                                    <li x-text="err"></li>
+                                </template>
+                            </ul>
+                        </template>
+                    </div>
+                </div>
+
                 <!-- Progress Bar Pengisian Tugas Petugas -->
                 <div class="p-4 rounded-2xl border transition shadow-2xs space-y-2.5"
                      :class="completedAssignmentsCount() === assignments.length ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50/80 border-slate-200'">
@@ -585,7 +635,7 @@
                                     <!-- Render Items Wilayah (Bisa Lebih dari 1) dengan AUTOCOMPLETE BERJENJANG -->
                                     <div class="space-y-2.5">
                                         <template x-for="(wItem, wIdx) in assign.wilayah_tugas" :key="wIdx">
-                                            <div class="relative" x-data="{
+                                            <div class="relative" x-effect="searchQuery = assign.wilayah_tugas[wIdx] ?? ''" x-data="{
                                                 searchQuery: assign.wilayah_tugas[wIdx],
                                                 suggestions: [],
                                                 isOpen: false,
@@ -1358,6 +1408,8 @@ function penugasanWizard() {
         pengawasCandidatesList: @json($pengawasCandidates),
         pengawasAssignments: [],
         assignments: [],
+        alokasiImporting: false,
+        alokasiImportResult: null,
 
         levelOptions: [
             { id: 'kecamatan', label: 'Kecamatan', desc: 'Wilayah level kecamatan di Wonosobo' },
@@ -1533,6 +1585,62 @@ function penugasanWizard() {
             if (!assign.wilayah_tugas) assign.wilayah_tugas = [];
             assign.wilayah_tugas.push('');
             this.$nextTick(() => { lucide.createIcons(); });
+        },
+
+        downloadAlokasiTemplate() {
+            const ids = this.selectedPetugasIds.join(',');
+            const url = '{{ route('penugasan.wizard.alokasi_template', $sub) }}?ids=' + encodeURIComponent(ids) + '&level=' + encodeURIComponent(this.levelWilayah);
+            window.location.href = url;
+        },
+
+        async importAlokasiExcel() {
+            const fileInput = this.$refs.alokasiFile;
+            if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                alert('Pilih file Excel (.xlsx / .csv) terlebih dahulu.');
+                return;
+            }
+
+            this.alokasiImporting = true;
+            this.alokasiImportResult = null;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('level', this.levelWilayah);
+
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            try {
+                const res = await fetch('{{ route('penugasan.wizard.alokasi_import', $sub) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: formData,
+                });
+
+                const data = await res.json();
+                this.alokasiImportResult = data;
+
+                if (data.matched) {
+                    this.assignments.forEach(assign => {
+                        const match = data.matched[assign.user_id];
+                        if (match && Array.isArray(match.wilayah_tugas) && match.wilayah_tugas.length > 0) {
+                            assign.wilayah_tugas = [...match.wilayah_tugas];
+                            if (match.kecamatan_id) {
+                                assign.kecamatan_id = String(match.kecamatan_id);
+                            }
+                        }
+                    });
+                }
+
+                fileInput.value = '';
+                this.$nextTick(() => { lucide.createIcons(); });
+            } catch (e) {
+                alert('Gagal mengimpor file alokasi.');
+            } finally {
+                this.alokasiImporting = false;
+            }
         },
 
         setJenisPerjalanan(assign, jenis) {

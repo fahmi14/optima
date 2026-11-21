@@ -137,6 +137,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/sub/{sub}/wizard/petugas-details', [PenugasanWizardController::class, 'selectedPetugasDetails'])->name('penugasan.wizard.petugas_details');
         Route::post('/sub/{sub}/wizard/batch', [PenugasanWizardController::class, 'storeBatch'])->name('penugasan.wizard.store');
         Route::get('/sub/{sub}/wizard/template', [PenugasanWizardController::class, 'downloadTemplate'])->name('penugasan.wizard.template');
+        Route::get('/sub/{sub}/wizard/alokasi-template', [PenugasanWizardController::class, 'downloadAlokasiTemplate'])->name('penugasan.wizard.alokasi_template');
+        Route::post('/sub/{sub}/wizard/alokasi-import', [PenugasanWizardController::class, 'importAlokasi'])->name('penugasan.wizard.alokasi_import');
         Route::post('/sub/{sub}/penugasan', [PenugasanController::class, 'store'])->name('penugasan.store');
         Route::put('/penugasan/{penugasan}', [PenugasanController::class, 'update'])->name('penugasan.update');
         Route::post('/penugasan/{penugasan}/verify', [PenugasanController::class, 'verify'])->name('penugasan.verify');
